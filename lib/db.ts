@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+// Validate all required env vars at startup — fails fast with a clear error
+// instead of a cryptic Prisma "database URL not found" crash later.
+import "@/lib/env";
 
 /**
  * Prisma Client Singleton Pattern

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ProductCard } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ async function getProducts(searchParams: ProductsPageProps["searchParams"]) {
   const limit = 12;
   const skip = (page - 1) * limit;
 
-  const where: any = { isActive: true };
+  const where: Prisma.ProductWhereInput = { isActive: true };
 
   if (searchParams.category) {
     where.category = { slug: searchParams.category };
@@ -67,7 +68,7 @@ async function getProducts(searchParams: ProductsPageProps["searchParams"]) {
     if (searchParams.maxPrice) where.price.lte = parseFloat(searchParams.maxPrice);
   }
 
-  const orderBy: any = {};
+  const orderBy: Prisma.ProductOrderByWithRelationInput = {};
   switch (searchParams.sortBy) {
     case "price-asc":
       orderBy.price = "asc";

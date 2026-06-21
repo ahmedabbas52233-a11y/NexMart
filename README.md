@@ -9,10 +9,12 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-5.14-2D3748?logo=prisma)](https://www.prisma.io/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/tests-40%2B%20passing-brightgreen?logo=vitest)](./\_\_tests\_\_)
+[![Tests](https://img.shields.io/badge/tests-55%2B%20passing-brightgreen?logo=vitest)](./\_\_tests\_\_)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-[**Live Demo**](https://nexmart-demo.vercel.app) · [**Report Bug**](https://github.com/ahmedabbas52233-a11y/ecommerce-fullstack-design/issues) · [**Request Feature**](https://github.com/ahmedabbas52233-a11y/ecommerce-fullstack-design/issues)
+[**Live Demo**](#deployment) · [**Report Bug**](https://github.com/ahmedabbas52233-a11y/ecommerce-fullstack-design/issues) · [**Request Feature**](https://github.com/ahmedabbas52233-a11y/ecommerce-fullstack-design/issues)
+
+> 🚀 **Deploy to Vercel first, then replace this link with your live URL.**
 
 </div>
 
@@ -251,6 +253,7 @@ Test files live in `__tests__/` mirroring the source structure:
 ```
 __tests__/
 ├── lib/utils.test.ts            # cn, formatPrice, calculateDiscount, slugify, truncate
+├── lib/rate-limit.test.ts       # token bucket logic, window reset, per-IP isolation, all 3 limiters
 ├── hooks/useCart.test.ts        # addItem, removeItem, updateQuantity, totalItems, totalPrice
 ├── api/products.test.ts         # GET (filters, search, sort, pagination), POST
 ├── api/product-detail.test.ts   # GET (404, slug/id), PATCH, DELETE (soft)
