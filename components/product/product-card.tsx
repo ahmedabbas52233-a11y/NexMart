@@ -30,7 +30,7 @@ interface ProductCardProps {
   variant?: "default" | "compact";
 }
 
-export function ProductCard({ product, variant = "default" }: ProductCardProps) {
+export function ProductCard({ product, variant: _variant = "default" }: ProductCardProps) {
   const { addToCart } = useCartAPI();
   const discount = calculateDiscount(
     Number(product.price),
