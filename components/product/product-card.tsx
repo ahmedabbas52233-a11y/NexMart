@@ -37,7 +37,6 @@ export function ProductCard({ product, variant = "default" }: ProductCardProps) 
     product.comparePrice ? Number(product.comparePrice) : null
   );
 
-  const _isCompact = variant === "compact"; // reserved for future compact layout
 
   return (
     <div className="group relative flex flex-col rounded-xl border border-border bg-surface shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden">

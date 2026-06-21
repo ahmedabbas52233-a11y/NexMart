@@ -95,7 +95,7 @@ export default async function HomePage() {
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             {/* Hero Content */}
             <div className="space-y-6">
-              <Badge variant="primary" className="bg-primary text-white">
+              <Badge variant="default" className="bg-primary text-white">
                 New Arrivals 2026
               </Badge>
               <h1 className="text-display text-text-primary leading-tight">
