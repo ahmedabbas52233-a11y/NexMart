@@ -57,16 +57,16 @@ export function Footer() {
               Your one-stop destination for the latest electronics, gadgets, and tech accessories at unbeatable prices.
             </p>
             <div className="flex items-center gap-3">
-              <a href="#" className="text-text-secondary hover:text-primary transition-colors">
+              <a href="#" aria-label="Facebook" className="text-text-secondary hover:text-primary transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="#" className="text-text-secondary hover:text-primary transition-colors">
+              <a href="#" aria-label="Twitter" className="text-text-secondary hover:text-primary transition-colors">
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="#" className="text-text-secondary hover:text-primary transition-colors">
+              <a href="#" aria-label="Instagram" className="text-text-secondary hover:text-primary transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
-              <a href="#" className="text-text-secondary hover:text-primary transition-colors">
+              <a href="#" aria-label="LinkedIn" className="text-text-secondary hover:text-primary transition-colors">
                 <Linkedin className="h-5 w-5" />
               </a>
             </div>

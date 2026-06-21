@@ -104,7 +104,7 @@ describe("ProductCard — rendering", () => {
   it("links product image and name to the product detail page", () => {
     render(<ProductCard product={makeProduct()} />);
     const links = screen.getAllByRole("link");
-    links.forEach((link) => {
+    links.forEach((link: HTMLElement) => {
       expect(link).toHaveAttribute("href", "/product/sony-wh-1000xm5");
     });
   });

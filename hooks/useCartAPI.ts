@@ -3,7 +3,6 @@
 import { useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useCartStore } from "./useCart";
-import { CartItemWithProduct } from "@/types";
 import { toast } from "sonner";
 
 /**

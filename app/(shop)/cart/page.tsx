@@ -130,6 +130,7 @@ export default function CartPage() {
                     <button
                       onClick={() => updateQuantity(item.productId, item.quantity - 1)}
                       disabled={item.quantity <= 1 || isLoading}
+                      aria-label="Decrease quantity"
                       className="h-8 w-8 flex items-center justify-center text-text-secondary hover:text-text-primary disabled:opacity-30 transition-colors"
                     >
                       <Minus className="h-3 w-3" />
@@ -138,6 +139,7 @@ export default function CartPage() {
                     <button
                       onClick={() => updateQuantity(item.productId, item.quantity + 1)}
                       disabled={item.quantity >= item.product.stock || isLoading}
+                      aria-label="Increase quantity"
                       className="h-8 w-8 flex items-center justify-center text-text-secondary hover:text-text-primary disabled:opacity-30 transition-colors"
                     >
                       <Plus className="h-3 w-3" />

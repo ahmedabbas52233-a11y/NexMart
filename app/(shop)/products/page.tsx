@@ -4,13 +4,9 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ProductCard } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Search, 
-  SlidersHorizontal, 
-  Grid3X3, 
-  List,
   ChevronDown,
   ArrowLeft,
   ArrowRight
@@ -231,6 +227,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               <span className="text-sm text-text-secondary hidden sm:inline">Sort by:</span>
               <div className="relative">
                 <select
+                  aria-label="Sort products by"
                   className="appearance-none bg-background border border-border rounded-md px-3 py-1.5 pr-8 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                   value={searchParams.sortBy || "newest"}
                   onChange={(e) => {

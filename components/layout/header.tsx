@@ -85,6 +85,7 @@ export function Header() {
               />
               <button
                 type="submit"
+                aria-label="Search"
                 className="absolute right-1 top-1 h-8 w-8 flex items-center justify-center rounded-md bg-primary text-white hover:bg-primary-600 transition-colors"
               >
                 <Search className="h-4 w-4" />
@@ -235,6 +236,7 @@ export function Header() {
             />
             <button
               type="submit"
+              aria-label="Search"
               className="absolute right-1 top-1 h-8 w-8 flex items-center justify-center rounded-md bg-primary text-white"
             >
               <Search className="h-4 w-4" />

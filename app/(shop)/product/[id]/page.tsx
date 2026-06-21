@@ -8,15 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/product/product-card";
 import { 
   Star, 
-  ShoppingCart, 
   Heart, 
   Share2, 
   Truck, 
   Shield, 
   RotateCcw,
   Check,
-  Minus,
-  Plus
 } from "lucide-react";
 import { AddToCartButton } from "@/components/product/add-to-cart-button";
 
@@ -144,6 +141,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               {product.images.map((image, index) => (
                 <button
                   key={index}
+                  aria-label={`View image ${index + 1}`}
                   className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden border-2 border-primary bg-background"
                 >
                   <Image

@@ -11,7 +11,7 @@ import { AlertTriangle } from "lucide-react";
  * Provides a user-friendly error message with retry option.
  */
 export default function ProductsError({
-  error,
+  error: _error,
   reset,
 }: {
   error: Error & { digest?: string };

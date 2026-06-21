@@ -8,11 +8,9 @@ import { prisma } from "@/lib/db";
  * Used in product detail page.
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const { id } = params;
 
     const product = await prisma.product.findFirst({
       where: {
@@ -75,7 +73,7 @@ export async function PATCH(
  * Using soft delete to preserve order history.
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {

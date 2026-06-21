@@ -141,7 +141,9 @@ export default function SignUpPage() {
           <div className="flex items-start gap-2">
             <input 
               type="checkbox" 
+              id="terms-checkbox"
               required
+              aria-label="I agree to the terms and privacy policy"
               className="mt-1 rounded border-border text-primary focus:ring-primary" 
             />
             <span className="text-sm text-text-secondary">

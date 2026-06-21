@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +48,7 @@ interface Product {
 }
 
 export default function AdminProductsPage() {
-  const router = useRouter();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -293,7 +292,7 @@ export default function AdminProductsPage() {
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         {product.isFeatured && (
-                          <Badge variant="primary" className="text-[10px]">Featured</Badge>
+                          <Badge variant="default" className="text-[10px]">Featured</Badge>
                         )}
                         {product.stock === 0 && (
                           <Badge variant="danger" className="text-[10px]">Out</Badge>
