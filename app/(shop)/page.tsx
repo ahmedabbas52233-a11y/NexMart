@@ -1,291 +1,281 @@
-import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
+import Image from "next/image";
 import { prisma } from "@/lib/db";
-import { formatPrice, calculateDiscount } from "@/lib/utils";
+import { ProductCard } from "@/components/product/product-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ProductCard } from "@/components/product/product-card";
 import { 
-  Star, 
-  Heart, 
-  Share2, 
-  Truck, 
-  Shield, 
-  RotateCcw,
-  Check,
+  ArrowRight, 
+  Headphones, 
+  Smartphone, 
+  Laptop, 
+  Camera, 
+  Watch,
+  Home,
+  Sofa,
+  Speaker
 } from "lucide-react";
-import { AddToCartButton } from "@/components/product/add-to-cart-button";
 
 /**
- * Product Detail Page
+ * Home Page
  * 
- * Server Component fetching product by slug.
+ * Architecture: Server Component (default in App Router)
  * WHY Server Component:
- * - SEO-critical page (product name, description in HTML)
- * - Direct DB access (no API roundtrip)
- * - Generates OG tags for social sharing
+ * - Direct database access (no API layer needed)
+ * - SEO-friendly HTML rendered on server
+ * - Faster initial page load (no client JS for data fetch)
+ * - Data fetching happens at build time or request time
  * 
- * Features:
- * - Image gallery with main image + thumbnails
- * - Product info, specs, stock status
- * - Quantity selector (client component)
- * - Add to cart (client component)
- * - Related products section
+ * Sections matching Figma design:
+ * 1. Hero Banner - "Latest trending Electronic items"
+ * 2. Category Grid - Icon-based category navigation
+ * 3. Deals & Offers - Countdown + discounted products
+ * 4. Featured Products - Grid of featured items
+ * 5. Consumer Electronics - Category-specific showcase
+ * 6. Recommended Items - Personalized suggestions
  */
 
-interface ProductPageProps {
-  params: { id: string };
-}
+// Category icons mapping
+const categoryIcons: Record<string, React.ReactNode> = {
+  "Electronics": <Speaker className="h-6 w-6" />,
+  "Mobile Phones": <Smartphone className="h-6 w-6" />,
+  "Laptops": <Laptop className="h-6 w-6" />,
+  "Cameras": <Camera className="h-6 w-6" />,
+  "Audio": <Headphones className="h-6 w-6" />,
+  "Wearables": <Watch className="h-6 w-6" />,
+  "Home & Outdoor": <Home className="h-6 w-6" />,
+  "Furniture": <Sofa className="h-6 w-6" />,
+};
 
-async function getProduct(slug: string) {
-  const product = await prisma.product.findFirst({
-    where: {
-      OR: [{ slug }, { id: slug }],
-      isActive: true,
-    },
+async function getHomeData() {
+  // Fetch featured products (isFeatured = true)
+  const featuredProducts = await prisma.product.findMany({
+    where: { isFeatured: true, isActive: true },
     include: { category: true },
+    take: 8,
+    orderBy: { createdAt: "desc" },
   });
 
-  if (!product) return null;
-
-  // Fetch related products from same category
-  const relatedProducts = await prisma.product.findMany({
-    where: {
-      categoryId: product.categoryId,
-      id: { not: product.id },
-      isActive: true,
+  // Fetch deals (products with comparePrice)
+  const deals = await prisma.product.findMany({
+    where: { 
+      isActive: true, 
+      comparePrice: { not: null } 
     },
     include: { category: true },
     take: 4,
+    orderBy: { createdAt: "desc" },
   });
 
-  return { product, relatedProducts };
+  // Fetch all categories
+  const categories = await prisma.category.findMany({
+    where: { isActive: true },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  // Fetch latest products
+  const latestProducts = await prisma.product.findMany({
+    where: { isActive: true },
+    include: { category: true },
+    take: 4,
+    orderBy: { createdAt: "desc" },
+  });
+
+  return { featuredProducts, deals, categories, latestProducts };
 }
 
-export async function generateMetadata({ params }: ProductPageProps) {
-  const data = await getProduct(params.id);
-  if (!data) return { title: "Product Not Found" };
-
-  return {
-    title: data.product.name,
-    description: data.product.description.slice(0, 160),
-    openGraph: {
-      images: data.product.images[0] ? [data.product.images[0]] : [],
-    },
-  };
-}
-
-export default async function ProductPage({ params }: ProductPageProps) {
-  const data = await getProduct(params.id);
-
-  if (!data) {
-    notFound();
-  }
-
-  const { product, relatedProducts } = data;
-  const discount = calculateDiscount(
-    Number(product.price),
-    product.comparePrice ? Number(product.comparePrice) : null
-  );
-
-  const inStock = product.stock > 0;
-  const lowStock = product.stock > 0 && product.stock <= 5;
+export default async function HomePage() {
+  const { featuredProducts, deals, categories, latestProducts } = await getHomeData();
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-text-secondary mb-6">
-        <Link href="/" className="hover:text-primary transition-colors">Home</Link>
-        <span>/</span>
-        <Link href="/products" className="hover:text-primary transition-colors">Products</Link>
-        <span>/</span>
-        <Link 
-          href={`/products?category=${product.category.slug}`} 
-          className="hover:text-primary transition-colors capitalize"
-        >
-          {product.category.name}
-        </Link>
-        <span>/</span>
-        <span className="text-text-primary truncate max-w-xs">{product.name}</span>
-      </nav>
-
-      <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-        {/* Image Gallery */}
-        <div className="space-y-4">
-          {/* Main Image */}
-          <div className="relative aspect-square rounded-2xl overflow-hidden bg-background border border-border">
-            <Image
-              src={product.images[0] || "/placeholder-product.jpg"}
-              alt={product.name}
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-            {discount && (
-              <Badge variant="danger" className="absolute top-4 left-4 text-sm px-3 py-1">
-                -{discount}% OFF
+    <div className="flex flex-col gap-12 pb-12">
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-primary-50 via-white to-primary-100 overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
+          <div className="grid lg:grid-cols-2 gap-8 items-center">
+            {/* Hero Content */}
+            <div className="space-y-6">
+              <Badge variant="default" className="bg-primary text-white">
+                New Arrivals 2026
               </Badge>
-            )}
-            {!inStock && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <Badge variant="secondary" className="text-lg px-4 py-2">Out of Stock</Badge>
+              <h1 className="text-display text-text-primary leading-tight">
+                Latest trending{" "}
+                <span className="text-primary">Electronic items</span>
+              </h1>
+              <p className="text-body-lg text-text-secondary max-w-lg">
+                Discover cutting-edge technology at unbeatable prices. From premium headphones to professional cameras, find your perfect gadget today.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/products">
+                  <Button size="lg">
+                    Shop Now
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/products?category=electronics">
+                  <Button variant="secondary" size="lg">
+                    View Deals
+                  </Button>
+                </Link>
               </div>
-            )}
-          </div>
 
-          {/* Thumbnails */}
-          {product.images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {product.images.map((image, index) => (
-                <button
-                  key={index}
-                  aria-label={`View image ${index + 1}`}
-                  className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden border-2 border-primary bg-background"
-                >
-                  <Image
-                    src={image}
-                    alt={`${product.name} - ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="80px"
-                  />
-                </button>
+              {/* Stats */}
+              <div className="flex gap-8 pt-4">
+                <div>
+                  <p className="text-2xl font-bold text-text-primary">50K+</p>
+                  <p className="text-sm text-text-secondary">Products</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-text-primary">20K+</p>
+                  <p className="text-sm text-text-secondary">Customers</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-text-primary">4.9</p>
+                  <p className="text-sm text-text-secondary">Rating</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Hero Image */}
+            <div className="relative hidden lg:block">
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
+                <Image
+                  src="https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=800"
+                  alt="Latest Electronics"
+                  fill
+                  className="object-cover"
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                />
+              </div>
+              {/* Floating Cards */}
+              <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-card p-3 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary-50 flex items-center justify-center">
+                  <Headphones className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Best Audio</p>
+                  <p className="text-xs text-text-secondary">Premium sound</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Categories Grid */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-heading-2 text-text-primary">Categories</h2>
+          <Link href="/products" className="text-sm text-primary hover:underline flex items-center gap-1">
+            View All <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+          {categories.map((category) => (
+            <Link
+              key={category.id}
+              href={`/products?category=${category.slug}`}
+              className="group flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-surface hover:border-primary hover:shadow-card-hover transition-all"
+            >
+              <div className="h-12 w-12 rounded-full bg-primary-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                {categoryIcons[category.name] || <Speaker className="h-6 w-6" />}
+              </div>
+              <span className="text-xs font-medium text-text-primary text-center line-clamp-1">
+                {category.name}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Deals Section */}
+      {deals.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="rounded-2xl bg-gradient-to-r from-orange-50 to-red-50 border border-orange-100 p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <Badge variant="warning" className="mb-2">Limited Time</Badge>
+                <h2 className="text-heading-2 text-text-primary">Deals and Offers</h2>
+                <p className="text-text-secondary mt-1">Up to 50% off on selected items</p>
+              </div>
+              <Link href="/products?sortBy=price-desc">
+                <Button variant="secondary">View All Deals</Button>
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {deals.map((product) => (
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
-          )}
-        </div>
-
-        {/* Product Info */}
-        <div className="space-y-6">
-          {/* Header */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline">{product.category.name}</Badge>
-              {product.brand && (
-                <Badge variant="secondary">{product.brand}</Badge>
-              )}
-            </div>
-            <h1 className="text-heading-1 text-text-primary">{product.name}</h1>
-
-            {/* Rating */}
-            <div className="flex items-center gap-3 mt-3">
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={`h-5 w-5 ${
-                      star <= Math.round(product.rating)
-                        ? "fill-warning text-warning"
-                        : "fill-border-light text-border-light"
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-sm text-text-secondary">
-                {product.rating} ({product.reviewCount} reviews)
-              </span>
-            </div>
-          </div>
-
-          {/* Price */}
-          <div className="flex items-baseline gap-3 p-4 rounded-xl bg-primary-50 border border-primary-100">
-            <span className="text-3xl font-bold text-primary">
-              {formatPrice(Number(product.price))}
-            </span>
-            {product.comparePrice && (
-              <span className="text-lg text-text-secondary line-through">
-                {formatPrice(Number(product.comparePrice))}
-              </span>
-            )}
-            {discount && (
-              <Badge variant="danger" className="ml-auto">
-                Save {discount}%
-              </Badge>
-            )}
-          </div>
-
-          {/* Description */}
-          <p className="text-body-lg text-text-secondary leading-relaxed">
-            {product.description}
-          </p>
-
-          {/* Stock Status */}
-          <div className="flex items-center gap-2">
-            {inStock ? (
-              <>
-                <Check className="h-5 w-5 text-success" />
-                <span className="text-sm text-success font-medium">In Stock</span>
-                {lowStock && (
-                  <span className="text-sm text-warning">Only {product.stock} left - order soon!</span>
-                )}
-              </>
-            ) : (
-              <>
-                <span className="h-2 w-2 rounded-full bg-danger" />
-                <span className="text-sm text-danger font-medium">Out of Stock</span>
-              </>
-            )}
-          </div>
-
-          {/* SKU */}
-          {product.sku && (
-            <div className="text-sm text-text-secondary">
-              SKU: <span className="font-mono text-text-primary">{product.sku}</span>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
-            <AddToCartButton 
-              productId={product.id} 
-              maxStock={product.stock}
-              disabled={!inStock}
-            />
-            <Button variant="secondary" size="lg" className="flex-1">
-              <Heart className="h-5 w-5 mr-2" />
-              Wishlist
-            </Button>
-            <Button variant="ghost" size="icon" className="h-12 w-12">
-              <Share2 className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Trust Badges */}
-          <div className="grid grid-cols-3 gap-3 pt-4">
-            <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-surface border border-border text-center">
-              <Truck className="h-6 w-6 text-primary" />
-              <span className="text-xs text-text-secondary">Free Shipping</span>
-            </div>
-            <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-surface border border-border text-center">
-              <Shield className="h-6 w-6 text-primary" />
-              <span className="text-xs text-text-secondary">2 Year Warranty</span>
-            </div>
-            <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-surface border border-border text-center">
-              <RotateCcw className="h-6 w-6 text-primary" />
-              <span className="text-xs text-text-secondary">30-Day Returns</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Related Products */}
-      {relatedProducts.length > 0 && (
-        <section className="mt-16">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-heading-2 text-text-primary">You May Also Like</h2>
-            <Link href={`/products?category=${product.category.slug}`} className="text-sm text-primary hover:underline">
-              View All
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {relatedProducts.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
           </div>
         </section>
       )}
+
+      {/* Featured Products */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-heading-2 text-text-primary">Featured Products</h2>
+            <p className="text-text-secondary mt-1">Handpicked by our experts</p>
+          </div>
+          <Link href="/products" className="text-sm text-primary hover:underline flex items-center gap-1">
+            View All <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {featuredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </section>
+
+      {/* Consumer Electronics Banner */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-primary-600 to-primary-800 text-white">
+          <div className="grid lg:grid-cols-2 gap-8 p-8 lg:p-12 items-center">
+            <div className="space-y-4">
+              <Badge className="bg-white/20 text-white border-0">Consumer Electronics</Badge>
+              <h2 className="text-heading-1 text-white">Upgrade Your Tech Game</h2>
+              <p className="text-primary-100 text-body-lg">
+                From smart home devices to professional audio equipment, find everything you need to stay ahead.
+              </p>
+              <Link href="/products?category=electronics">
+                <Button variant="outline" className="border-white text-white hover:bg-white hover:text-primary">
+                  Explore Collection
+                </Button>
+              </Link>
+            </div>
+            <div className="hidden lg:block relative h-64">
+              <Image
+                src="https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=600"
+                alt="Consumer Electronics"
+                fill
+                className="object-cover rounded-xl"
+                sizes="50vw"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Latest Products */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-heading-2 text-text-primary">Recommended Items</h2>
+            <p className="text-text-secondary mt-1">Just added to our collection</p>
+          </div>
+          <Link href="/products?sortBy=newest" className="text-sm text-primary hover:underline flex items-center gap-1">
+            View All <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {latestProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
