@@ -115,8 +115,8 @@ describe("rateLimit()", () => {
 
 // ─── Pre-configured limiters ──────────────────────────────────────────────────
 describe("limiters.register()", () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
 
   it("allows 5 requests before blocking", () => {
     const ip = "reg-ip-1";
@@ -143,8 +143,8 @@ describe("limiters.register()", () => {
 });
 
 describe("limiters.login()", () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
 
   it("allows 10 login attempts before blocking", () => {
     const ip = "login-ip-1";
@@ -156,8 +156,8 @@ describe("limiters.login()", () => {
 });
 
 describe("limiters.api()", () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
 
   it("allows 30 API calls per minute", () => {
     const ip = "api-ip-1";

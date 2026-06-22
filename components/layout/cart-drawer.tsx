@@ -104,6 +104,7 @@ export function CartDrawer() {
                     <div className="flex items-center border border-border rounded-md bg-surface">
                       <button
                         onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                        aria-label="Decrease quantity"
                         className="h-7 w-7 flex items-center justify-center text-text-secondary hover:text-text-primary"
                       >
                         <Minus className="h-3 w-3" />
@@ -111,6 +112,7 @@ export function CartDrawer() {
                       <span className="w-8 text-center text-xs font-medium">{item.quantity}</span>
                       <button
                         onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                        aria-label="Increase quantity"
                         className="h-7 w-7 flex items-center justify-center text-text-secondary hover:text-text-primary"
                       >
                         <Plus className="h-3 w-3" />
