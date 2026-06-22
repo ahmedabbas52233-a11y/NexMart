@@ -1,13 +1,15 @@
+export const dynamic = "force-dynamic";
+
 import { Suspense } from "react";
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ProductCard } from "@/components/product/product-card";
+import { ProductSort } from "@/components/product/product-sort";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Search, 
-  ChevronDown,
   ArrowLeft,
   ArrowRight
 } from "lucide-react";
@@ -225,23 +227,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-3 rounded-lg border border-border bg-surface">
             <div className="flex items-center gap-2">
               <span className="text-sm text-text-secondary hidden sm:inline">Sort by:</span>
-              <div className="relative">
-                <select
-                  aria-label="Sort products by"
-                  className="appearance-none bg-background border border-border rounded-md px-3 py-1.5 pr-8 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-                  value={searchParams.sortBy || "newest"}
-                  onChange={(e) => {
-                    const url = buildUrl({ sortBy: e.target.value });
-                    window.location.href = url;
-                  }}
-                >
-                  <option value="newest">Newest</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="rating">Highest Rated</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" />
-              </div>
+              <ProductSort
+                defaultValue={searchParams.sortBy || "newest"}
+                buildUrl={buildUrl}
+              />
             </div>
 
             <div className="flex items-center gap-2">

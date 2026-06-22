@@ -60,8 +60,13 @@ vi.mock("@/lib/db", () => ({
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeRequest(url: string, init?: Record<string, unknown>): any {
-  const { NextRequest } = require("next/server");
-  return new NextRequest(url, init);
+  // Use a plain object matching the mock shape — avoids require() ESM issues
+  return {
+    url,
+    method: ((init?.method as string) || "GET").toUpperCase(),
+    headers: { get: (_key: string) => null },
+    json: async () => JSON.parse((init?.body as string) || "{}"),
+  };
 }
 
 // ─── GET /api/products/[id] ───────────────────────────────────────────────────

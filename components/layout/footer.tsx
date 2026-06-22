@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { ShoppingCart, Mail, MapPin, Phone, Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
 import { Input } from "@/components/ui/input";

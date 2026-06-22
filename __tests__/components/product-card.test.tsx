@@ -155,13 +155,16 @@ describe("ProductCard — out of stock", () => {
 
   it("disables the Add to Cart button when out of stock", () => {
     render(<ProductCard product={makeProduct({ stock: 0 })} />);
-    const button = screen.getByRole("button");
+    // ProductCard renders 2 buttons (wishlist + add-to-cart) — query by name
+    const button = screen.getByRole("button", { name: /out of stock/i });
     expect(button).toBeDisabled();
   });
 
   it("shows 'Add to Cart' text when in stock", () => {
     render(<ProductCard product={makeProduct({ stock: 5 })} />);
-    expect(screen.getByRole("button")).toHaveTextContent("Add to Cart");
+    expect(
+      screen.getByRole("button", { name: /add to cart/i })
+    ).toBeInTheDocument();
   });
 });
 
@@ -169,7 +172,7 @@ describe("ProductCard — out of stock", () => {
 describe("ProductCard — add to cart", () => {
   it("calls addToCart with the product id when button clicked", () => {
     render(<ProductCard product={makeProduct()} />);
-    const button = screen.getByRole("button");
+    const button = screen.getByRole("button", { name: /add to cart/i });
     fireEvent.click(button);
     expect(mockAddToCart).toHaveBeenCalledWith("prod-1");
     expect(mockAddToCart).toHaveBeenCalledTimes(1);
@@ -177,7 +180,7 @@ describe("ProductCard — add to cart", () => {
 
   it("does not call addToCart when product is out of stock", () => {
     render(<ProductCard product={makeProduct({ stock: 0 })} />);
-    const button = screen.getByRole("button");
+    const button = screen.getByRole("button", { name: /out of stock/i });
     // Button is disabled — click should not propagate
     fireEvent.click(button);
     expect(mockAddToCart).not.toHaveBeenCalled();
