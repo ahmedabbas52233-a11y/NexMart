@@ -229,7 +229,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               <span className="text-sm text-text-secondary hidden sm:inline">Sort by:</span>
               <ProductSort
                 defaultValue={searchParams.sortBy || "newest"}
-                buildUrl={buildUrl}
               />
             </div>
 

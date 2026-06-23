@@ -180,10 +180,11 @@ describe("ProductCard — add to cart", () => {
   });
 
   it("does not call addToCart when product is out of stock", async () => {
+    const user = userEvent.setup();
     render(<ProductCard product={makeProduct({ stock: 0 })} />);
     const button = screen.getByRole("button", { name: /out of stock/i });
-    // userEvent respects disabled — won't dispatch click on a disabled button
-    await userEvent.click(button);
+    // userEvent.setup() uses pointer events that respect disabled attribute
+    await user.click(button);
     expect(mockAddToCart).not.toHaveBeenCalled();
   });
 });
