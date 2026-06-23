@@ -1,15 +1,17 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
 
-// WHY no @vitejs/plugin-react here:
-// When tsc --noEmit type-checks vitest.config.ts it uses the standalone
-// vite package's types, but defineConfig from "vitest/config" uses
-// vitest's bundled vite copy — two different PluginOption types clash.
-// For testing purposes React JSX transform is handled by vitest's built-in
-// esbuild transform (which supports JSX natively), so the plugin is
-// not needed in the test config.
+// WHY no @vitejs/plugin-react:
+// Using defineConfig from "vitest/config" with @vitejs/plugin-react causes
+// a PluginOption type mismatch (vitest bundles its own vite copy).
+// Instead, we configure esbuild directly with jsx:"automatic" which tells
+// esbuild to use React 17+ automatic runtime — no `import React` needed
+// in component files, same behaviour as the plugin provided.
 
 export default defineConfig({
+  esbuild: {
+    jsx: "automatic",
+  },
   test: {
     environment: "jsdom",
     globals: true,
