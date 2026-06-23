@@ -1,18 +1,15 @@
-/// <reference types="vitest" />
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
 import path from "path";
 
-// WHY import from "vite" not "vitest/config":
-// vitest bundles its own copy of vite. @vitejs/plugin-react uses the
-// standalone vite package. When both are present, TypeScript sees two
-// incompatible Plugin types and raises a PluginOption[] mismatch error.
-// Using defineConfig from "vite" keeps both on the same type source.
-// The /// <reference types="vitest" /> directive adds Vitest's `test`
-// config property to Vite's UserConfig so the `test` block type-checks.
+// WHY no @vitejs/plugin-react here:
+// When tsc --noEmit type-checks vitest.config.ts it uses the standalone
+// vite package's types, but defineConfig from "vitest/config" uses
+// vitest's bundled vite copy — two different PluginOption types clash.
+// For testing purposes React JSX transform is handled by vitest's built-in
+// esbuild transform (which supports JSX natively), so the plugin is
+// not needed in the test config.
 
 export default defineConfig({
-  plugins: [react()],
   test: {
     environment: "jsdom",
     globals: true,

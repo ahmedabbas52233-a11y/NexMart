@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { ProductCard } from "@/components/product/product-card";
 
@@ -178,11 +179,11 @@ describe("ProductCard — add to cart", () => {
     expect(mockAddToCart).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call addToCart when product is out of stock", () => {
+  it("does not call addToCart when product is out of stock", async () => {
     render(<ProductCard product={makeProduct({ stock: 0 })} />);
     const button = screen.getByRole("button", { name: /out of stock/i });
-    // Button is disabled — click should not propagate
-    fireEvent.click(button);
+    // userEvent respects disabled — won't dispatch click on a disabled button
+    await userEvent.click(button);
     expect(mockAddToCart).not.toHaveBeenCalled();
   });
 });
