@@ -52,3 +52,15 @@ export function truncate(text: string, length: number): string {
   if (text.length <= length) return text;
   return text.slice(0, length).trim() + "...";
 }
+
+/**
+ * Serialize Prisma model — converts Decimal → number, Date → string
+ * so objects are safe to pass from Server Components to Client Components.
+ *
+ * WHY: Prisma returns `Decimal` objects for price/rating fields.
+ * Next.js App Router cannot serialize non-plain objects across the
+ * Server→Client boundary and throws a runtime error that causes 404.
+ */
+export function serialize<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}

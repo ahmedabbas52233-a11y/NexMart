@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { formatPrice, calculateDiscount } from "@/lib/utils";
+import { formatPrice, calculateDiscount, serialize } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/product/product-card";
@@ -60,7 +60,7 @@ async function getProduct(slug: string) {
     take: 4,
   });
 
-  return { product, relatedProducts };
+  return { product: serialize(product), relatedProducts: serialize(relatedProducts) };
 }
 
 export async function generateMetadata({ params }: ProductPageProps) {

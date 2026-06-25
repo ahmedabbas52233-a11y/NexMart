@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ProductCard } from "@/components/product/product-card";
+import { serialize } from "@/lib/utils";
 import { ProductSort } from "@/components/product/product-sort";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -96,7 +97,7 @@ async function getProducts(searchParams: ProductsPageProps["searchParams"]) {
     }),
   ]);
 
-  return { products, total, categories, totalPages: Math.ceil(total / limit), page };
+  return { products: serialize(products), total, categories: serialize(categories), totalPages: Math.ceil(total / limit), page };
 }
 
 function ProductGridSkeleton() {
