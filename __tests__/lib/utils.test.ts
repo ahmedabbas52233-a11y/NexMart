@@ -1,66 +1,83 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Decimal } from "@prisma/client/runtime/library";
 
+/**
+ * Combines multiple class names and merges Tailwind classes efficiently.
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(price: number | Decimal | string | null): string {
+/**
+ * Formats a number as USD currency.
+ */
+export function formatPrice(price: number | string | null | undefined): string {
   if (price === null || price === undefined) return "$0.00";
-  const num = typeof price === "object" && price instanceof Decimal 
-    ? price.toNumber() 
-    : Number(price);
+  const num = typeof price === "string" ? parseFloat(price) : price;
+  if (isNaN(num)) return "$0.00";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
+    minimumFractionDigits: 2,
   }).format(num);
 }
 
-export function calculateDiscount(price: number | Decimal, comparePrice: number | Decimal | null): number {
-  if (!comparePrice || comparePrice === 0) return 0;
-  const p = price instanceof Decimal ? price.toNumber() : Number(price);
-  const cp = comparePrice instanceof Decimal ? comparePrice.toNumber() : Number(comparePrice);
-  return Math.round(((cp - p) / cp) * 100);
+/**
+ * Calculates discount percentage.
+ */
+export function calculateDiscount(price: number, comparePrice: number | null | undefined): number {
+  if (!comparePrice || comparePrice <= price) return 0;
+  return Math.round(((comparePrice - price) / comparePrice) * 100);
 }
 
+/**
+ * Generates URL-safe slug.
+ */
 export function slugify(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Truncates text with ellipsis.
+ */
 export function truncate(text: string, length: number): string {
   if (text.length <= length) return text;
-  return text.slice(0, length) + "...";
+  return text.slice(0, length).trim() + "...";
 }
 
-// CRITICAL FIX: Convert Prisma Decimal objects to plain numbers for Client Components
+/**
+ * Serialize Prisma Decimal → plain number/string for Server→Client boundary.
+ * CRITICAL: Prevents "Only plain objects can be passed to Client Components" error.
+ */
+export function serialize<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
+
+/**
+ * Serialize product specifically — converts Decimal fields to numbers.
+ * Use this before passing Prisma products to Client Components.
+ */
 export function serializeProduct(product: any) {
-  if (!product) return null;
   return {
     ...product,
-    price: product.price instanceof Decimal ? product.price.toNumber() : Number(product.price),
-    comparePrice: product.comparePrice instanceof Decimal 
-      ? product.comparePrice.toNumber() 
-      : product.comparePrice ? Number(product.comparePrice) : null,
-    rating: product.rating instanceof Decimal ? product.rating.toNumber() : Number(product.rating),
+    price: typeof product.price === "object" ? parseFloat(product.price.toString()) : product.price,
+    comparePrice: product.comparePrice 
+      ? (typeof product.comparePrice === "object" ? parseFloat(product.comparePrice.toString()) : product.comparePrice)
+      : null,
+    rating: typeof product.rating === "object" ? parseFloat(product.rating.toString()) : product.rating,
     createdAt: product.createdAt?.toISOString?.() || product.createdAt,
     updatedAt: product.updatedAt?.toISOString?.() || product.updatedAt,
-    category: product.category ? serializeCategory(product.category) : null,
   };
 }
 
-export function serializeCategory(category: any) {
-  if (!category) return null;
-  return {
-    ...category,
-    createdAt: category.createdAt?.toISOString?.() || category.createdAt,
-    updatedAt: category.updatedAt?.toISOString?.() || category.updatedAt,
-  };
-}
-
+/**
+ * Serialize array of products.
+ */
 export function serializeProducts(products: any[]) {
   return products.map(serializeProduct);
 }

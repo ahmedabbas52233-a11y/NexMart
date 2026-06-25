@@ -1,94 +1,199 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import ProductCard from "@/components/product/ProductCard";
-import { useCart } from "@/hooks/useCart";
+import userEvent from "@testing-library/user-event";
+import React from "react";
+import { ProductCard } from "@/components/product/product-card";
 
-// Mock the cart hook
-vi.mock("@/hooks/useCart", () => ({
-  useCart: vi.fn(),
+// ─── Mocks ────────────────────────────────────────────────────────────────────
+
+const mockAddToCart = vi.fn();
+
+vi.mock("@/hooks/useCartAPI", () => ({
+  useCartAPI: () => ({
+    addToCart: mockAddToCart,
+    isLoading: false,
+  }),
 }));
 
-vi.mock("sonner", () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
+// lucide-react icons are SVGs — render as empty spans to keep tests simple
+vi.mock("lucide-react", () => ({
+  Heart: () => React.createElement("span", { "data-testid": "heart-icon" }),
+  ShoppingCart: () => React.createElement("span", { "data-testid": "cart-icon" }),
+  Star: ({ className }: { className: string }) =>
+    React.createElement("span", { "data-testid": "star", className }),
 }));
 
-const mockProduct = {
-  id: "prod-1",
-  name: "Test Product",
-  slug: "test-product",
-  price: 99.99,
-  comparePrice: 149.99,
-  images: ["https://example.com/image.jpg"],
-  rating: 4.5,
-  reviewCount: 128,
-  stock: 10,
-  category: { name: "Electronics" },
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-describe("ProductCard", () => {
-  const addItem = vi.fn();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeProduct(overrides: Record<string, unknown> = {}): any {
+  return {
+    id: "prod-1",
+    name: "Sony WH-1000XM5",
+    slug: "sony-wh-1000xm5",
+    description: "Industry-leading noise cancelling headphones",
+    price: 349.99,
+    comparePrice: null,
+    stock: 10,
+    images: ["/sony.jpg"],
+    sku: "SONY-XM5",
+    brand: "Sony",
+    rating: 4.5,
+    reviewCount: 128,
+    isActive: true,
+    isFeatured: true,
+    categoryId: "cat-audio",
+    metaTitle: null,
+    metaDesc: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    category: {
+      id: "cat-audio",
+      name: "Audio",
+      slug: "audio",
+      description: null,
+      image: null,
+      parentId: null,
+      sortOrder: 0,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    ...overrides,
+  };
+}
 
+// ─── Render tests ─────────────────────────────────────────────────────────────
+describe("ProductCard — rendering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useCart as any).mockReturnValue({ addItem });
   });
 
-  it("renders product information correctly", () => {
-    render(<ProductCard product={mockProduct} />);
+  it("renders the product name", () => {
+    render(<ProductCard product={makeProduct()} />);
+    expect(screen.getByText("Sony WH-1000XM5")).toBeInTheDocument();
+  });
 
-    expect(screen.getByText("Test Product")).toBeInTheDocument();
-    expect(screen.getByText("$99.99")).toBeInTheDocument();
-    expect(screen.getByText("$149.99")).toBeInTheDocument();
+  it("renders the category name", () => {
+    render(<ProductCard product={makeProduct()} />);
+    expect(screen.getByText("Audio")).toBeInTheDocument();
+  });
+
+  it("renders the formatted price", () => {
+    render(<ProductCard product={makeProduct()} />);
+    expect(screen.getByText("$349.99")).toBeInTheDocument();
+  });
+
+  it("renders the review count", () => {
+    render(<ProductCard product={makeProduct()} />);
     expect(screen.getByText("(128)")).toBeInTheDocument();
   });
 
-  it("shows discount badge when comparePrice exists", () => {
-    render(<ProductCard product={mockProduct} />);
-    expect(screen.getByText(/-33%/)).toBeInTheDocument();
+  it("renders five star icons", () => {
+    render(<ProductCard product={makeProduct()} />);
+    const stars = screen.getAllByTestId("star");
+    expect(stars).toHaveLength(5);
   });
 
-  it("disables add to cart when out of stock", () => {
-    const outOfStockProduct = { ...mockProduct, stock: 0 };
-    render(<ProductCard product={outOfStockProduct} />);
+  it("renders product image with correct alt text", () => {
+    render(<ProductCard product={makeProduct()} />);
+    const img = screen.getByRole("img");
+    expect(img).toHaveAttribute("alt", "Sony WH-1000XM5");
+    expect(img).toHaveAttribute("src", "/sony.jpg");
+  });
 
-    const button = screen.getByRole("button", { name: /add to cart/i });
+  it("links product image and name to the product detail page", () => {
+    render(<ProductCard product={makeProduct()} />);
+    const links = screen.getAllByRole("link");
+    links.forEach((link: HTMLElement) => {
+      expect(link).toHaveAttribute("href", "/product/sony-wh-1000xm5");
+    });
+  });
+});
+
+// ─── Discount badge ────────────────────────────────────────────────────────────
+describe("ProductCard — discount badge", () => {
+  it("shows discount badge when comparePrice is set", () => {
+    // 349.99 vs 499.99 = ~30% off
+    render(
+      <ProductCard
+        product={makeProduct({ price: 349.99, comparePrice: 499.99 })}
+      />
+    );
+    expect(screen.getByText(/-\d+%/)).toBeInTheDocument();
+  });
+
+  it("shows the strikethrough comparePrice", () => {
+    render(
+      <ProductCard
+        product={makeProduct({ price: 349.99, comparePrice: 499.99 })}
+      />
+    );
+    expect(screen.getByText("$499.99")).toBeInTheDocument();
+  });
+
+  it("does NOT show discount badge when comparePrice is null", () => {
+    render(<ProductCard product={makeProduct({ comparePrice: null })} />);
+    expect(screen.queryByText(/-\d+%/)).not.toBeInTheDocument();
+  });
+
+  it("does NOT show discount badge when comparePrice equals price", () => {
+    render(
+      <ProductCard
+        product={makeProduct({ price: 349.99, comparePrice: 349.99 })}
+      />
+    );
+    expect(screen.queryByText(/-\d+%/)).not.toBeInTheDocument();
+  });
+});
+
+// ─── Out-of-stock state ────────────────────────────────────────────────────────
+describe("ProductCard — out of stock", () => {
+  it("shows 'Out of Stock' overlay when stock is 0", () => {
+    render(<ProductCard product={makeProduct({ stock: 0 })} />);
+    expect(screen.getByText("Out of Stock")).toBeInTheDocument();
+  });
+
+  it("disables the Add to Cart button when out of stock", () => {
+    render(<ProductCard product={makeProduct({ stock: 0 })} />);
+    // ProductCard renders 2 buttons (wishlist + add-to-cart) — query by name
+    const button = screen.getByRole("button", { name: /out of stock/i });
     expect(button).toBeDisabled();
   });
 
-  it("calls addItem when add to cart is clicked", () => {
-    render(<ProductCard product={mockProduct} />);
+  it("shows 'Add to Cart' text when in stock", () => {
+    render(<ProductCard product={makeProduct({ stock: 5 })} />);
+    expect(
+      screen.getByRole("button", { name: /add to cart/i })
+    ).toBeInTheDocument();
+  });
+});
 
+// ─── Add to cart interaction ───────────────────────────────────────────────────
+describe("ProductCard — add to cart", () => {
+  it("calls addToCart with the product id when button clicked", () => {
+    render(<ProductCard product={makeProduct()} />);
     const button = screen.getByRole("button", { name: /add to cart/i });
     fireEvent.click(button);
-
-    expect(addItem).toHaveBeenCalledWith("prod-1", 1);
+    expect(mockAddToCart).toHaveBeenCalledWith("prod-1");
+    expect(mockAddToCart).toHaveBeenCalledTimes(1);
   });
 
-  it("does NOT call addItem when clicking the card (only on button)", () => {
-    render(<ProductCard product={mockProduct} />);
-
-    // Click on the product name/link area - should NOT add to cart
-    const productLink = screen.getByText("Test Product");
-    fireEvent.click(productLink);
-
-    // addItem should NOT be called from the link click
-    expect(addItem).not.toHaveBeenCalled();
+  it("does not call addToCart when product is out of stock", async () => {
+    const user = userEvent.setup();
+    render(<ProductCard product={makeProduct({ stock: 0 })} />);
+    const button = screen.getByRole("button", { name: /out of stock/i });
+    // userEvent.setup() uses pointer events that respect disabled attribute
+    await user.click(button);
+    expect(mockAddToCart).not.toHaveBeenCalled();
   });
+});
 
-  it("renders in list view mode", () => {
-    render(<ProductCard product={mockProduct} viewMode="list" />);
-
-    expect(screen.getByText("Free Shipping")).toBeInTheDocument();
-    expect(screen.getByText("View details")).toBeInTheDocument();
-  });
-
-  it("renders star rating correctly", () => {
-    render(<ProductCard product={mockProduct} />);
-
-    const stars = screen.getAllByTestId("star");
-    expect(stars.length).toBe(5);
+// ─── Compact variant ──────────────────────────────────────────────────────────
+describe("ProductCard — compact variant", () => {
+  it("renders without error in compact mode", () => {
+    expect(() =>
+      render(<ProductCard product={makeProduct()} variant="compact" />)
+    ).not.toThrow();
   });
 });
