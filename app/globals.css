@@ -2,80 +2,124 @@
 @tailwind components;
 @tailwind utilities;
 
-/**
- * Global Styles
- * 
- * WHY these custom styles:
- * - Custom scrollbar for consistent cross-browser experience
- * - Focus visible for accessibility (keyboard navigation)
- * - Selection color matches brand
- * - Smooth scrolling for better UX
- */
-
 @layer base {
+  :root {
+    /* Figma Theme Colors - Alibaba Style */
+    --primary: 217 91% 60%;           /* #0D6EFD */
+    --primary-light: 213 100% 95%;   /* #E5F1FF */
+    --primary-gradient-start: 213 100% 55%; /* #127FFF */
+    --primary-gradient-end: 213 100% 50%;     /* #0067FF */
+
+    --success: 134 100% 36%;        /* #00B517 */
+    --warning: 32 100% 55%;           /* #FF9017 */
+    --danger: 0 84% 60%;              /* #FA3434 */
+    --danger-light: 0 100% 95%;       /* #FFE3E3 */
+
+    --background: 210 40% 98%;        /* #F7FAFC */
+    --foreground: 0 0% 11%;           /* #1C1C1C */
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 11%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 210 8% 46%;
+
+    --accent: 210 20% 96%;
+    --accent-foreground: 0 0% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 90%;            /* #DEE2E7 */
+    --input: 214 20% 90%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.5rem;
+
+    /* Custom Figma Colors */
+    --gray-100: 0 0% 97%;             /* #F7F7F7 */
+    --gray-200: 0 0% 88%;             /* #E0E0E0 */
+    --gray-300: 214 20% 90%;          /* #DEE2E7 */
+    --gray-400: 213 12% 75%;          /* #BDC4CD */
+    --gray-500: 210 10% 62%;          /* #8B96A5 */
+    --gray-600: 0 0% 31%;             /* #505050 */
+    --gray-700: 0 0% 25%;             /* #404040 */
+    --gray-800: 0 0% 38%;             /* #606060 */
+
+    --orange: 32 100% 55%;            /* #FF9017 */
+    --green: 134 100% 36%;            /* #00B517 */
+    --red: 0 84% 60%;                 /* #FA3434 */
+    --blue: 217 91% 60%;              /* #0D6EFD */
+
+    --font-inter: 'Inter', sans-serif;
+  }
+
   * {
     @apply border-border;
   }
 
-  html {
-    scroll-behavior: smooth;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
   body {
-    @apply bg-background text-text-primary;
-  }
-
-  /* Custom Scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-border-light;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-text-secondary rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-text-muted;
-  }
-
-  /* Focus styles for accessibility */
-  :focus-visible {
-    @apply outline-none ring-2 ring-primary ring-offset-2;
-  }
-
-  /* Selection color */
-  ::selection {
-    @apply bg-primary-100 text-primary-900;
+    @apply bg-background text-foreground;
+    font-family: var(--font-inter);
   }
 }
 
-@layer utilities {
-  /* Line clamp utilities */
-  .line-clamp-1 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-b from-[#127FFF] to-[#0067FF] text-white px-4 py-2 rounded-md font-medium;
   }
 
-  .line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+  .btn-outline {
+    @apply bg-white border border-[#DEE2E7] text-[#0D6EFD] px-4 py-2 rounded-md font-medium;
   }
 
-  .line-clamp-3 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
+  .card-border {
+    @apply border border-[#DEE2E7] rounded-lg;
   }
+
+  .text-primary-blue {
+    @apply text-[#0D6EFD];
+  }
+
+  .bg-primary-light {
+    @apply bg-[#E5F1FF];
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Image loading placeholder */
+.image-placeholder {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
