@@ -1,43 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Mock } from "vitest";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const routeModule = require("@/app/api/products/route") as {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  GET: (req: unknown, ctx?: unknown) => Promise<{ status: number; json: () => Promise<any> }>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  POST: (req: unknown) => Promise<{ status: number; json: () => Promise<any> }>;
+// Define mocks with explicit types BEFORE importing route
+const mockFindMany = vi.fn();
+const mockCount = vi.fn();
+const mockCreate = vi.fn();
+
+const mockPrisma = {
+  product: {
+    findMany: mockFindMany as Mock,
+    count: mockCount as Mock,
+    create: mockCreate as Mock,
+  },
 };
-const GET = routeModule.GET;
-const POST = routeModule.POST;
 
-// ─── Mocks ────────────────────────────────────────────────────────────────────
-
-vi.mock("next/server", () => ({
-  NextRequest: class MockNextRequest {
-    url: string;
-    method: string;
-    private _body: string;
-
-    constructor(
-      url: string,
-      init?: { method?: string; body?: string; headers?: Record<string, string> }
-    ) {
-      this.url = url;
-      this.method = (init?.method || "GET").toUpperCase();
-      this._body = (init?.body as string) || "{}";
-    }
-
-    async json() {
-      return JSON.parse(this._body);
-    }
-  },
-  NextResponse: {
-    json: (data: unknown, init?: { status?: number }) => ({
-      status: init?.status ?? 200,
-      json: async () => data,
-    }),
-  },
+vi.mock("@/lib/db", () => ({
+  prisma: mockPrisma,
 }));
+
+import { GET, POST } from "@/app/api/products/route";
 
 const mockProducts = [
   {
@@ -64,23 +45,7 @@ const mockProducts = [
   },
 ];
 
-const mockPrisma = {
-  product: {
-    findMany: vi.fn(),
-    count: vi.fn(),
-    create: vi.fn(),
-  },
-};
-
-vi.mock("@/lib/db", () => ({
-  prisma: mockPrisma,
-}));
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeRequest(url: string, init?: Record<string, unknown>): any {
-  // Use a plain object matching the mock shape — avoids require() ESM issues
   return {
     url,
     method: ((init?.method as string) || "GET").toUpperCase(),
@@ -89,17 +54,16 @@ function makeRequest(url: string, init?: Record<string, unknown>): any {
   };
 }
 
-// ─── GET /api/products ────────────────────────────────────────────────────────
 describe("GET /api/products", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPrisma.product.findMany.mockResolvedValue(mockProducts);
-    mockPrisma.product.count.mockResolvedValue(mockProducts.length);
+    mockFindMany.mockResolvedValue(mockProducts);
+    mockCount.mockResolvedValue(mockProducts.length);
   });
 
   it("returns products with success=true and meta", async () => {
     const req = makeRequest("http://localhost:3000/api/products");
-    const res = await GET(req, {});
+    const res = await GET(req);
     const data = await res.json();
 
     expect(data.success).toBe(true);
@@ -113,12 +77,10 @@ describe("GET /api/products", () => {
   });
 
   it("passes search param as OR filter to Prisma", async () => {
-    const req = makeRequest(
-      "http://localhost:3000/api/products?search=iphone"
-    );
-    await GET(req, {});
+    const req = makeRequest("http://localhost:3000/api/products?search=iphone");
+    await GET(req);
 
-    const whereArg = mockPrisma.product.findMany.mock.calls[0][0].where;
+    const whereArg = mockFindMany.mock.calls[0][0].where;
     expect(whereArg.OR).toEqual([
       { name: { contains: "iphone", mode: "insensitive" } },
       { description: { contains: "iphone", mode: "insensitive" } },
@@ -127,75 +89,63 @@ describe("GET /api/products", () => {
   });
 
   it("passes category slug filter to Prisma", async () => {
-    const req = makeRequest(
-      "http://localhost:3000/api/products?category=laptops"
-    );
-    await GET(req, {});
+    const req = makeRequest("http://localhost:3000/api/products?category=laptops");
+    await GET(req);
 
-    const whereArg = mockPrisma.product.findMany.mock.calls[0][0].where;
+    const whereArg = mockFindMany.mock.calls[0][0].where;
     expect(whereArg.category).toEqual({ slug: "laptops" });
   });
 
   it("passes price range filters to Prisma", async () => {
-    const req = makeRequest(
-      "http://localhost:3000/api/products?minPrice=100&maxPrice=500"
-    );
-    await GET(req, {});
+    const req = makeRequest("http://localhost:3000/api/products?minPrice=100&maxPrice=500");
+    await GET(req);
 
-    const whereArg = mockPrisma.product.findMany.mock.calls[0][0].where;
+    const whereArg = mockFindMany.mock.calls[0][0].where;
     expect(whereArg.price).toMatchObject({ gte: 100, lte: 500 });
   });
 
   it("sorts by price ascending when sortBy=price-asc", async () => {
-    const req = makeRequest(
-      "http://localhost:3000/api/products?sortBy=price-asc"
-    );
-    await GET(req, {});
+    const req = makeRequest("http://localhost:3000/api/products?sortBy=price-asc");
+    await GET(req);
 
-    const orderByArg = mockPrisma.product.findMany.mock.calls[0][0].orderBy;
+    const orderByArg = mockFindMany.mock.calls[0][0].orderBy;
     expect(orderByArg).toEqual({ price: "asc" });
   });
 
   it("sorts by price descending when sortBy=price-desc", async () => {
-    const req = makeRequest(
-      "http://localhost:3000/api/products?sortBy=price-desc"
-    );
-    await GET(req, {});
+    const req = makeRequest("http://localhost:3000/api/products?sortBy=price-desc");
+    await GET(req);
 
-    const orderByArg = mockPrisma.product.findMany.mock.calls[0][0].orderBy;
+    const orderByArg = mockFindMany.mock.calls[0][0].orderBy;
     expect(orderByArg).toEqual({ price: "desc" });
   });
 
   it("sorts by rating when sortBy=rating", async () => {
-    const req = makeRequest(
-      "http://localhost:3000/api/products?sortBy=rating"
-    );
-    await GET(req, {});
+    const req = makeRequest("http://localhost:3000/api/products?sortBy=rating");
+    await GET(req);
 
-    const orderByArg = mockPrisma.product.findMany.mock.calls[0][0].orderBy;
+    const orderByArg = mockFindMany.mock.calls[0][0].orderBy;
     expect(orderByArg).toEqual({ rating: "desc" });
   });
 
   it("paginates with correct skip and take values", async () => {
-    const req = makeRequest(
-      "http://localhost:3000/api/products?page=2&limit=6"
-    );
-    mockPrisma.product.count.mockResolvedValue(18);
-    mockPrisma.product.findMany.mockResolvedValue([]);
+    const req = makeRequest("http://localhost:3000/api/products?page=2&limit=6");
+    mockCount.mockResolvedValue(18);
+    mockFindMany.mockResolvedValue([]);
 
-    const res = await GET(req, {});
+    const res = await GET(req);
     const data = await res.json();
 
-    const call = mockPrisma.product.findMany.mock.calls[0][0];
-    expect(call.skip).toBe(6); // (page-1) * limit = (2-1)*6
+    const call = mockFindMany.mock.calls[0][0];
+    expect(call.skip).toBe(6);
     expect(call.take).toBe(6);
-    expect(data.meta.totalPages).toBe(3); // 18 / 6
+    expect(data.meta.totalPages).toBe(3);
   });
 
   it("returns 500 when Prisma throws", async () => {
-    mockPrisma.product.findMany.mockRejectedValue(new Error("DB Error"));
+    mockFindMany.mockRejectedValue(new Error("DB Error"));
     const req = makeRequest("http://localhost:3000/api/products");
-    const res = await GET(req, {});
+    const res = await GET(req);
     const data = await res.json();
 
     expect(data.success).toBe(false);
@@ -204,7 +154,6 @@ describe("GET /api/products", () => {
   });
 });
 
-// ─── POST /api/products ───────────────────────────────────────────────────────
 describe("POST /api/products", () => {
   const newProduct = {
     name: "Sony WH-1000XM5",
@@ -217,7 +166,7 @@ describe("POST /api/products", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPrisma.product.create.mockResolvedValue({
+    mockCreate.mockResolvedValue({
       id: "prod-new",
       slug: "sony-wh-1000xm5",
       ...newProduct,
@@ -247,12 +196,12 @@ describe("POST /api/products", () => {
 
     await POST(req);
 
-    const createArg = mockPrisma.product.create.mock.calls[0][0];
+    const createArg = mockCreate.mock.calls[0][0];
     expect(createArg.data.slug).toBe("sony-wh-1000xm5");
   });
 
   it("returns 500 when Prisma create throws", async () => {
-    mockPrisma.product.create.mockRejectedValue(new Error("DB Error"));
+    mockCreate.mockRejectedValue(new Error("DB Error"));
     const req = makeRequest("http://localhost:3000/api/products", {
       method: "POST",
       body: JSON.stringify(newProduct),

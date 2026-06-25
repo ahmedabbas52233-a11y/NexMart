@@ -3,15 +3,6 @@
 import { ChevronDown } from "lucide-react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
-/**
- * ProductSort — Client Component
- *
- * WHY client-side URL building (not props from server):
- * Next.js App Router cannot serialize plain functions across the
- * Server → Client boundary. Passing buildUrl as a prop causes a
- * runtime crash. Instead, this component reads the current search
- * params itself via useSearchParams and builds the new URL locally.
- */
 interface ProductSortProps {
   defaultValue: string;
 }

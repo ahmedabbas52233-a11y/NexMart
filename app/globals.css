@@ -14,7 +14,7 @@
   }
 
   body {
-    @apply bg-[#F7FAFC] text-[#1C1C1C];
+    @apply bg-background text-text-primary;
     font-family: "Inter", system-ui, sans-serif;
   }
 
@@ -25,30 +25,25 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #EFF2F4;
+    @apply bg-border-light;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #8B96A5;
-    border-radius: 9999px;
+    @apply bg-text-secondary rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #606060;
+    @apply bg-text-muted;
   }
 
-  /* Focus styles */
+  /* Focus styles for accessibility */
   :focus-visible {
-    outline: none;
-    ring: 2px;
-    ring-color: #0D6EFD;
-    ring-offset: 2px;
+    @apply outline-none ring-2 ring-primary ring-offset-2;
   }
 
   /* Selection color */
   ::selection {
-    background: #E8F1FF;
-    color: #003D99;
+    @apply bg-primary-100 text-primary-900;
   }
 }
 

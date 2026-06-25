@@ -12,16 +12,16 @@ const config: Config = {
       colors: {
         primary: {
           DEFAULT: "#0D6EFD",
-          50: "#E8F1FF",
-          100: "#D1E3FF",
-          200: "#A3C7FF",
-          300: "#75ABFF",
-          400: "#478FFF",
+          50: "#E7F1FF",
+          100: "#CCE3FF",
+          200: "#99C7FF",
+          300: "#66ABFF",
+          400: "#338FFF",
           500: "#0D6EFD",
-          600: "#0052CC",
-          700: "#003D99",
-          800: "#002966",
-          900: "#001433",
+          600: "#0A58CA",
+          700: "#084298",
+          800: "#052C65",
+          900: "#031633",
         },
         success: "#00B517",
         warning: "#FF9017",
@@ -70,6 +70,7 @@ const config: Config = {
       animation: {
         "fade-in": "fadeIn 0.2s ease-out",
         "slide-up": "slideUp 0.3s ease-out",
+        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
       keyframes: {
         fadeIn: {

@@ -1,20 +1,3 @@
-/**
- * In-Memory Rate Limiter
- *
- * WHY: Auth endpoints (/register, /login) are the most abused in any web app.
- * Without rate limiting:
- *   - /register → spammers create thousands of accounts
- *   - /login (via NextAuth) → brute-force attacks on passwords
- *
- * WHY in-memory (not Redis/Upstash):
- *   - Zero additional services or cost for a portfolio/demo deployment
- *   - Works correctly on Vercel's single-instance Edge Functions
- *   - For multi-instance production at scale, swap Map → @upstash/ratelimit
- *
- * Algorithm: Token bucket (sliding window approximation)
- * Each IP gets `maxRequests` tokens per `windowMs`. Consumed on each request.
- */
-
 interface RateLimitEntry {
   count: number;
   resetAt: number;

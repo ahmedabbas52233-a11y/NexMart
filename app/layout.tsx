@@ -1,53 +1,36 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { Providers } from "@/components/layout/Providers";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
-import { Providers } from "@/components/layout/providers";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
-import { CartDrawer } from "@/components/layout/cart-drawer";
 
 const inter = Inter({
   subsets: ["latin"],
-  display: "swap",
   variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "ShopEase - Your Trusted Electronics Store",
-    template: "%s | ShopEase",
-  },
-  description:
-    "Discover the latest electronics, gadgets, and tech accessories at unbeatable prices. Free shipping on orders over $50.",
-  keywords: ["electronics", "gadgets", "phones", "laptops", "cameras", "online store"],
-  authors: [{ name: "ShopEase" }],
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: "https://shopease.vercel.app",
-    siteName: "ShopEase",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  title: "NexMart - Premium Electronics Store",
+  description: "Discover the latest electronics, gadgets, and accessories at NexMart.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getServerSession(authOptions);
+
   return (
     <html lang="en" className={inter.variable}>
-      <body className="min-h-screen bg-background font-sans antialiased">
-        <Providers>
-          <div className="flex min-h-screen flex-col">
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-            <CartDrawer />
-          </div>
+      <body className="min-h-screen flex flex-col">
+        <Providers session={session}>
+          <Header />
+          <main className="flex-1">{children}</main>
+          <Footer />
         </Providers>
       </body>
     </html>

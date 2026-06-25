@@ -1,83 +1,81 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { describe, it, expect } from "vitest";
+import { cn, formatPrice, calculateDiscount, slugify, truncate, serialize } from "@/lib/utils";
 
-/**
- * Combines multiple class names and merges Tailwind classes efficiently.
- */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+describe("cn", () => {
+  it("merges class names correctly", () => {
+    expect(cn("px-2", "px-4")).toBe("px-4");
+    expect(cn("text-red-500", "text-blue-500")).toBe("text-blue-500");
+    expect(cn("p-2", "m-2")).toBe("p-2 m-2");
+  });
 
-/**
- * Formats a number as USD currency.
- */
-export function formatPrice(price: number | string | null | undefined): string {
-  if (price === null || price === undefined) return "$0.00";
-  const num = typeof price === "string" ? parseFloat(price) : price;
-  if (isNaN(num)) return "$0.00";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(num);
-}
+  it("handles conditional classes", () => {
+    expect(cn("base", false && "hidden", true && "block")).toBe("base block");
+  });
+});
 
-/**
- * Calculates discount percentage.
- */
-export function calculateDiscount(price: number, comparePrice: number | null | undefined): number {
-  if (!comparePrice || comparePrice <= price) return 0;
-  return Math.round(((comparePrice - price) / comparePrice) * 100);
-}
+describe("formatPrice", () => {
+  it("formats numbers as USD", () => {
+    expect(formatPrice(99.99)).toBe("$99.99");
+    expect(formatPrice(1000)).toBe("$1,000.00");
+    expect(formatPrice(0)).toBe("$0.00");
+  });
 
-/**
- * Generates URL-safe slug.
- */
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+  it("handles string inputs", () => {
+    expect(formatPrice("49.99")).toBe("$49.99");
+  });
 
-/**
- * Truncates text with ellipsis.
- */
-export function truncate(text: string, length: number): string {
-  if (text.length <= length) return text;
-  return text.slice(0, length).trim() + "...";
-}
+  it("handles invalid input", () => {
+    expect(formatPrice(NaN)).toBe("$0.00");
+  });
+});
 
-/**
- * Serialize Prisma Decimal → plain number/string for Server→Client boundary.
- * CRITICAL: Prevents "Only plain objects can be passed to Client Components" error.
- */
-export function serialize<T>(data: T): T {
-  return JSON.parse(JSON.stringify(data));
-}
+describe("calculateDiscount", () => {
+  it("calculates discount percentage", () => {
+    expect(calculateDiscount(80, 100)).toBe(20);
+    expect(calculateDiscount(349.99, 399.99)).toBe(13);
+  });
 
-/**
- * Serialize product specifically — converts Decimal fields to numbers.
- * Use this before passing Prisma products to Client Components.
- */
-export function serializeProduct(product: any) {
-  return {
-    ...product,
-    price: typeof product.price === "object" ? parseFloat(product.price.toString()) : product.price,
-    comparePrice: product.comparePrice 
-      ? (typeof product.comparePrice === "object" ? parseFloat(product.comparePrice.toString()) : product.comparePrice)
-      : null,
-    rating: typeof product.rating === "object" ? parseFloat(product.rating.toString()) : product.rating,
-    createdAt: product.createdAt?.toISOString?.() || product.createdAt,
-    updatedAt: product.updatedAt?.toISOString?.() || product.updatedAt,
-  };
-}
+  it("returns 0 when no compare price", () => {
+    expect(calculateDiscount(100, null)).toBe(0);
+  });
 
-/**
- * Serialize array of products.
- */
-export function serializeProducts(products: any[]) {
-  return products.map(serializeProduct);
-}
+  it("returns 0 when compare price is lower", () => {
+    expect(calculateDiscount(100, 80)).toBe(0);
+  });
+});
+
+describe("slugify", () => {
+  it("creates URL-safe slugs", () => {
+    expect(slugify("Hello World")).toBe("hello-world");
+    expect(slugify("Sony WH-1000XM5")).toBe("sony-wh-1000xm5");
+    expect(slugify("  Spaces  ")).toBe("spaces");
+  });
+});
+
+describe("truncate", () => {
+  it("truncates long text", () => {
+    expect(truncate("Hello World", 5)).toBe("Hello...");
+    expect(truncate("Hi", 10)).toBe("Hi");
+  });
+});
+
+describe("serialize", () => {
+  it("converts Decimal to plain number", () => {
+    // Mock Prisma Decimal-like object
+    const decimalLike = {
+      toNumber: () => 99.99,
+      toString: () => "99.99",
+    };
+    const data = { price: decimalLike };
+    const result = serialize(data);
+    expect(typeof result.price).toBe("number");
+    expect(result.price).toBe(99.99);
+  });
+
+  it("converts Date to string", () => {
+    const now = new Date("2024-01-15");
+    const result = serialize({ date: now });
+    expect(typeof result.date).toBe("string");
+    expect(result.date).toBe(now.toISOString());
+  });
+});

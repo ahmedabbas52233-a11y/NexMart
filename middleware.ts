@@ -11,26 +11,19 @@ export default withAuth(
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // Add security headers
-    const response = NextResponse.next();
-    response.headers.set("X-Frame-Options", "DENY");
-    response.headers.set("X-Content-Type-Options", "nosniff");
-    response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-
-    return response;
+    return NextResponse.next();
   },
   {
     callbacks: {
       authorized({ req, token }) {
-        if (req.nextUrl.pathname.startsWith("/admin")) {
-          return token?.role === "ADMIN";
-        }
-        return true;
+        // Public routes don't need auth
+        if (!req.nextUrl.pathname.startsWith("/admin")) return true;
+        return token?.role === "ADMIN";
       },
     },
   }
 );
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*", "/cart/:path*"],
+  matcher: ["/admin/:path*"],
 };

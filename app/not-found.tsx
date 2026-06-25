@@ -1,39 +1,17 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 
-/**
- * Global Not Found Page
- *
- * Renders for any unmatched route across the entire app.
- * Next.js uses this as the fallback 404 — must be at app/not-found.tsx.
- */
-export default function NotFound() {
+export default function ProductNotFound() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
-      <div className="text-center max-w-md">
-        {/* Error code */}
-        <p className="text-8xl font-bold text-primary/20 select-none">404</p>
-
-        <h1 className="mt-4 text-2xl font-bold text-text-primary">
-          Page not found
-        </h1>
-        <p className="mt-2 text-text-secondary">
-          The page you&apos;re looking for doesn&apos;t exist or has been moved.
-        </p>
-
-        <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
-          >
-            Back to Home
-          </Link>
-          <Link
-            href="/products"
-            className="inline-flex items-center justify-center rounded-lg border border-border px-6 py-2.5 text-sm font-medium text-text-primary hover:bg-surface transition-colors"
-          >
-            Browse Products
-          </Link>
-        </div>
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center">
+        <Search className="w-16 h-16 text-border mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-text-primary mb-2">Product Not Found</h2>
+        <p className="text-text-secondary mb-6">The product you are looking for does not exist.</p>
+        <Link href="/products">
+          <Button>Browse Products</Button>
+        </Link>
       </div>
     </div>
   );

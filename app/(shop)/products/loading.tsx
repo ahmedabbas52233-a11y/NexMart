@@ -1,14 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/**
- * Loading State for Products Page
- * 
- * WHY: Next.js App Router uses this automatically when:
- * 1. Data is fetching (suspense boundary)
- * 2. Navigation is pending
- * 
- * Matches the layout of the actual page for smooth transitions.
- */
 export default function ProductsLoading() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">

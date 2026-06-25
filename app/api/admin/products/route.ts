@@ -1,41 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db";
-import { authOptions } from "@/lib/auth";
+import { serialize } from "@/lib/utils";
 
-/**
- * GET /api/admin/products
- * 
- * Admin-only endpoint that returns ALL products (including inactive).
- * WHY separate from public API:
- * - Admins need to see soft-deleted products for restoration
- * - No pagination (admin needs full overview)
- * - Includes internal fields not exposed to public
- * 
- * SECURITY: Double-checks admin role (middleware is first line).
- */
-export async function GET(_request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get("search");
+    const category = searchParams.get("category");
+    const minPrice = searchParams.get("minPrice");
+    const maxPrice = searchParams.get("maxPrice");
+    const sortBy = searchParams.get("sortBy");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.min(50, parseInt(searchParams.get("limit") || "12"));
+    const skip = (page - 1) * limit;
 
-    if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 403 }
-      );
+    const where: any = { isActive: true };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
     }
 
-    const products = await prisma.product.findMany({
-      include: { category: true },
-      orderBy: { createdAt: "desc" },
-    });
+    if (category) {
+      where.category = { slug: category };
+    }
 
-    return NextResponse.json({ success: true, data: products });
-  } catch (error) {
-    console.error("[ADMIN_PRODUCTS_GET]", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch products" },
-      { status: 500 }
-    );
+    if (minPrice || maxPrice) {
+      where.price = {};
+      if (minPrice) where.price.gte = parseFloat(minPrice);
+      if (maxPrice) where.price.lte = parseFloat(maxPrice);
+    }
+
+    let orderBy: any = { createdAt: "desc" };
+    if (sortBy === "price-asc") orderBy = { price: "asc" };
+    if (sortBy === "price-desc") orderBy = { price: "desc" };
+    if (sortBy === "rating") orderBy = { rating: "desc" };
+    if (sortBy === "discount") orderBy = { comparePrice: "desc" };
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: { category: { select: { id: true, name: true, slug: true } } },
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      products: serialize(products),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
   }
 }
