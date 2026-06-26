@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+/**
+ * GET /api/products/[id]
+ * 
+ * Fetch a single product by ID or slug.
+ * Used in product detail page.
+ */
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }

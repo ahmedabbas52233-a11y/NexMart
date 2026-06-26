@@ -1,26 +1,51 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Mock } from "vitest";
+import { GET, POST, PATCH, DELETE } from "@/app/api/cart/route";
 
-// Define mocks with explicit types BEFORE importing route
-const mockCartFindMany = vi.fn();
-const mockCartFindUnique = vi.fn();
-const mockCartUpdate = vi.fn();
-const mockCartUpdateMany = vi.fn();
-const mockCartDeleteMany = vi.fn();
-const mockCartCreate = vi.fn();
-const mockProductFindUnique = vi.fn();
+// ─── Mocks ────────────────────────────────────────────────────────────────────
+
+vi.mock("next/server", () => ({
+  NextRequest: class MockNextRequest {
+    url: string;
+    method: string;
+    private _body: string;
+
+    constructor(url: string, init?: { method?: string; body?: string }) {
+      this.url = url;
+      this.method = (init?.method || "GET").toUpperCase();
+      this._body = (init?.body as string) || "{}";
+    }
+
+    async json() {
+      return JSON.parse(this._body);
+    }
+  },
+  NextResponse: {
+    json: (data: unknown, init?: { status?: number }) => ({
+      status: init?.status ?? 200,
+      json: async () => data,
+    }),
+  },
+}));
+
+// Mock getServerSession from next-auth
+vi.mock("next-auth", () => ({
+  getServerSession: vi.fn(),
+}));
+
+// Mock authOptions (dependency of getServerSession call inside handler)
+vi.mock("@/lib/auth", () => ({
+  authOptions: {},
+}));
 
 const mockPrisma = {
   cartItem: {
-    findMany: mockCartFindMany as Mock,
-    findUnique: mockCartFindUnique as Mock,
-    update: mockCartUpdate as Mock,
-    updateMany: mockCartUpdateMany as Mock,
-    deleteMany: mockCartDeleteMany as Mock,
-    create: mockCartCreate as Mock,
+    findMany: vi.fn(),
+    upsert: vi.fn(),
+    update: vi.fn(),
+    deleteMany: vi.fn(),
   },
   product: {
-    findUnique: mockProductFindUnique as Mock,
+    findUnique: vi.fn(),
   },
 };
 
@@ -28,20 +53,13 @@ vi.mock("@/lib/db", () => ({
   prisma: mockPrisma,
 }));
 
-vi.mock("next-auth", () => ({
-  getServerSession: vi.fn(),
-}));
-
-vi.mock("@/lib/auth", () => ({
-  authOptions: {},
-}));
-
-import { GET, POST, PATCH, DELETE } from "@/app/api/cart/route";
-import { getServerSession } from "next-auth";
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const mockSession = { user: { id: "user-1", email: "test@example.com", role: "USER" } };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeRequest(url: string, init?: Record<string, unknown>): any {
+  // Use a plain object matching the mock shape — avoids require() ESM issues
   return {
     url,
     method: ((init?.method as string) || "GET").toUpperCase(),
@@ -76,53 +94,61 @@ const mockProduct = {
   isActive: true,
 };
 
+// ─── GET /api/cart ─────────────────────────────────────────────────────────────
 describe("GET /api/cart", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("returns 401 when no session exists", async () => {
-    (getServerSession as Mock).mockResolvedValue(null);
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(null);
 
     const req = makeRequest("http://localhost:3000/api/cart");
     const res = await GET(req);
     const data = await res.json();
 
+    expect(data.success).toBe(false);
     expect(data.error).toBe("Unauthorized");
     expect(res.status).toBe(401);
   });
 
   it("returns the user's cart items on success", async () => {
-    (getServerSession as Mock).mockResolvedValue(mockSession);
-    mockCartFindMany.mockResolvedValue(mockCartItems);
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
+    mockPrisma.cartItem.findMany.mockResolvedValue(mockCartItems);
 
     const req = makeRequest("http://localhost:3000/api/cart");
     const res = await GET(req);
     const data = await res.json();
 
-    expect(data).toHaveLength(1);
-    expect(data[0].productId).toBe("prod-1");
+    expect(data.success).toBe(true);
+    expect(data.data).toHaveLength(1);
+    expect(data.data[0].productId).toBe("prod-1");
   });
 
   it("filters cart items by the authenticated user's id", async () => {
-    (getServerSession as Mock).mockResolvedValue(mockSession);
-    mockCartFindMany.mockResolvedValue([]);
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
+    mockPrisma.cartItem.findMany.mockResolvedValue([]);
 
     const req = makeRequest("http://localhost:3000/api/cart");
     await GET(req);
 
-    const whereArg = mockCartFindMany.mock.calls[0][0].where;
+    const whereArg = mockPrisma.cartItem.findMany.mock.calls[0][0].where;
     expect(whereArg.userId).toBe("user-1");
   });
 });
 
+// ─── POST /api/cart ────────────────────────────────────────────────────────────
 describe("POST /api/cart", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("returns 401 when not authenticated", async () => {
-    (getServerSession as Mock).mockResolvedValue(null);
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(null);
 
     const req = makeRequest("http://localhost:3000/api/cart", {
       method: "POST",
@@ -135,9 +161,25 @@ describe("POST /api/cart", () => {
     expect(data.error).toBe("Unauthorized");
   });
 
+  it("returns 400 when productId is missing from the body", async () => {
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
+
+    const req = makeRequest("http://localhost:3000/api/cart", {
+      method: "POST",
+      body: JSON.stringify({ quantity: 1 }),
+    });
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error).toBe("Product ID is required");
+  });
+
   it("returns 404 when product does not exist", async () => {
-    (getServerSession as Mock).mockResolvedValue(mockSession);
-    mockProductFindUnique.mockResolvedValue(null);
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
+    mockPrisma.product.findUnique.mockResolvedValue(null);
 
     const req = makeRequest("http://localhost:3000/api/cart", {
       method: "POST",
@@ -151,8 +193,9 @@ describe("POST /api/cart", () => {
   });
 
   it("returns 400 when requested quantity exceeds stock", async () => {
-    (getServerSession as Mock).mockResolvedValue(mockSession);
-    mockProductFindUnique.mockResolvedValue({ ...mockProduct, stock: 3 });
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
+    mockPrisma.product.findUnique.mockResolvedValue({ ...mockProduct, stock: 3 });
 
     const req = makeRequest("http://localhost:3000/api/cart", {
       method: "POST",
@@ -165,11 +208,11 @@ describe("POST /api/cart", () => {
     expect(data.error).toBe("Insufficient stock");
   });
 
-  it("creates cart item on success and returns 201", async () => {
-    (getServerSession as Mock).mockResolvedValue(mockSession);
-    mockProductFindUnique.mockResolvedValue(mockProduct);
-    mockCartFindUnique.mockResolvedValue(null);
-    mockCartCreate.mockResolvedValue({
+  it("upserts cart item on success and returns 201", async () => {
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
+    mockPrisma.product.findUnique.mockResolvedValue(mockProduct);
+    mockPrisma.cartItem.upsert.mockResolvedValue({
       ...mockCartItems[0],
       quantity: 1,
     });
@@ -182,17 +225,20 @@ describe("POST /api/cart", () => {
     const data = await res.json();
 
     expect(res.status).toBe(201);
-    expect(data.productId).toBe("prod-1");
+    expect(data.success).toBe(true);
+    expect(mockPrisma.cartItem.upsert).toHaveBeenCalledOnce();
   });
 });
 
+// ─── PATCH /api/cart ───────────────────────────────────────────────────────────
 describe("PATCH /api/cart", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("returns 401 when not authenticated", async () => {
-    (getServerSession as Mock).mockResolvedValue(null);
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(null);
 
     const req = makeRequest("http://localhost:3000/api/cart", {
       method: "PATCH",
@@ -203,9 +249,25 @@ describe("PATCH /api/cart", () => {
     expect(res.status).toBe(401);
   });
 
+  it("returns 400 when productId or quantity missing", async () => {
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
+
+    const req = makeRequest("http://localhost:3000/api/cart", {
+      method: "PATCH",
+      body: JSON.stringify({ productId: "prod-1" }), // no quantity
+    });
+    const res = await PATCH(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error).toMatch(/required/i);
+  });
+
   it("removes cart item when quantity is 0", async () => {
-    (getServerSession as Mock).mockResolvedValue(mockSession);
-    mockCartDeleteMany.mockResolvedValue({ count: 1 });
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
+    mockPrisma.cartItem.deleteMany.mockResolvedValue({ count: 1 });
 
     const req = makeRequest("http://localhost:3000/api/cart", {
       method: "PATCH",
@@ -214,12 +276,14 @@ describe("PATCH /api/cart", () => {
     const res = await PATCH(req);
     const data = await res.json();
 
-    expect(data.message).toBe("Item removed");
+    expect(data.success).toBe(true);
+    expect(mockPrisma.cartItem.deleteMany).toHaveBeenCalledOnce();
   });
 
   it("updates quantity when value is positive", async () => {
-    (getServerSession as Mock).mockResolvedValue(mockSession);
-    mockCartUpdateMany.mockResolvedValue({ count: 1 });
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
+    mockPrisma.cartItem.update.mockResolvedValue({ ...mockCartItems[0], quantity: 5 });
 
     const req = makeRequest("http://localhost:3000/api/cart", {
       method: "PATCH",
@@ -228,17 +292,20 @@ describe("PATCH /api/cart", () => {
     const res = await PATCH(req);
     const data = await res.json();
 
-    expect(data.updated).toBe(1);
+    expect(data.success).toBe(true);
+    expect(data.data.quantity).toBe(5);
   });
 });
 
+// ─── DELETE /api/cart ──────────────────────────────────────────────────────────
 describe("DELETE /api/cart", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("returns 401 when not authenticated", async () => {
-    (getServerSession as Mock).mockResolvedValue(null);
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(null);
 
     const req = makeRequest(
       "http://localhost:3000/api/cart?productId=prod-1",
@@ -250,7 +317,8 @@ describe("DELETE /api/cart", () => {
   });
 
   it("returns 400 when productId query param is missing", async () => {
-    (getServerSession as Mock).mockResolvedValue(mockSession);
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
 
     const req = makeRequest("http://localhost:3000/api/cart", {
       method: "DELETE",
@@ -263,8 +331,9 @@ describe("DELETE /api/cart", () => {
   });
 
   it("deletes the cart item and returns success", async () => {
-    (getServerSession as Mock).mockResolvedValue(mockSession);
-    mockCartDeleteMany.mockResolvedValue({ count: 1 });
+    const { getServerSession } = await import("next-auth");
+    vi.mocked(getServerSession).mockResolvedValue(mockSession);
+    mockPrisma.cartItem.deleteMany.mockResolvedValue({ count: 1 });
 
     const req = makeRequest(
       "http://localhost:3000/api/cart?productId=prod-1",
@@ -273,6 +342,9 @@ describe("DELETE /api/cart", () => {
     const res = await DELETE(req);
     const data = await res.json();
 
-    expect(data.message).toBe("Item removed");
+    expect(data.success).toBe(true);
+    expect(mockPrisma.cartItem.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", productId: "prod-1" },
+    });
   });
 });

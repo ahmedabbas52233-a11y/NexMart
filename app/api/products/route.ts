@@ -1,95 +1,97 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { serialize } from "@/lib/utils";
 
-export async function GET(req: NextRequest) {
+/**
+ * GET /api/products/[id]
+ * 
+ * Fetch a single product by ID or slug.
+ * Used in product detail page.
+ */
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search");
-    const category = searchParams.get("category");
-    const minPrice = searchParams.get("minPrice");
-    const maxPrice = searchParams.get("maxPrice");
-    const sortBy = searchParams.get("sortBy");
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = Math.min(50, parseInt(searchParams.get("limit") || "12"));
-    const skip = (page - 1) * limit;
+    const { id } = params;
 
-    const where: any = { isActive: true };
-
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-        { brand: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    if (category) {
-      where.category = { slug: category };
-    }
-
-    if (minPrice || maxPrice) {
-      where.price = {};
-      if (minPrice) where.price.gte = parseFloat(minPrice);
-      if (maxPrice) where.price.lte = parseFloat(maxPrice);
-    }
-
-    let orderBy: any = { createdAt: "desc" };
-    if (sortBy === "price-asc") orderBy = { price: "asc" };
-    if (sortBy === "price-desc") orderBy = { price: "desc" };
-    if (sortBy === "rating") orderBy = { rating: "desc" };
-
-    const [products, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        include: { category: true },
-        orderBy,
-        skip,
-        take: limit,
-      }),
-      prisma.product.count({ where }),
-    ]);
-
-    return NextResponse.json({
-      success: true,
-      data: serialize(products),
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+    const product = await prisma.product.findFirst({
+      where: {
+        OR: [{ id }, { slug: id }],
+        isActive: true,
       },
+      include: { category: true },
     });
-  } catch {
+
+    if (!product) {
+      return NextResponse.json(
+        { success: false, error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: product });
+  } catch (error) {
+    console.error("[PRODUCT_GET]", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch products" },
+      { success: false, error: "Failed to fetch product" },
       { status: 500 }
     );
   }
 }
 
-export async function POST(req: NextRequest) {
+/**
+ * PATCH /api/products/[id]
+ * 
+ * Admin only: Update a product.
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const body = await req.json();
+    const { id } = params;
+    const body = await request.json();
 
-    // Auto-generate slug if not provided
-    const slug = body.slug || body.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-
-    const product = await prisma.product.create({
-      data: {
-        ...body,
-        slug,
-      },
+    const product = await prisma.product.update({
+      where: { id },
+      data: body,
       include: { category: true },
     });
 
+    return NextResponse.json({ success: true, data: product });
+  } catch (error) {
+    console.error("[PRODUCT_PATCH]", error);
     return NextResponse.json(
-      { success: true, data: serialize(product) },
-      { status: 201 }
+      { success: false, error: "Failed to update product" },
+      { status: 500 }
     );
-  } catch {
+  }
+}
+
+/**
+ * DELETE /api/products/[id]
+ * 
+ * Admin only: Soft delete (set isActive to false) or hard delete.
+ * Using soft delete to preserve order history.
+ */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params;
+
+    // Soft delete - preserves data integrity
+    const product = await prisma.product.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return NextResponse.json({ success: true, data: product });
+  } catch (error) {
+    console.error("[PRODUCT_DELETE]", error);
     return NextResponse.json(
-      { success: false, error: "Failed to create product" },
+      { success: false, error: "Failed to delete product" },
       { status: 500 }
     );
   }

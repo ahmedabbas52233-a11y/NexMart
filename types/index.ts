@@ -1,53 +1,56 @@
-export interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  price: number;
-  comparePrice: number | null;
-  stock: number;
-  images: string[];
-  sku: string | null;
-  brand: string | null;
-  rating: number;
-  reviewCount: number;
-  isActive: boolean;
-  isFeatured: boolean;
-  categoryId: string;
-  category: {
-    id: string;
-    name: string;
-    slug: string;
-  } | null;
-  metaTitle: string | null;
-  metaDesc: string | null;
-  createdAt: string;
-  updatedAt: string;
+import { Product, Category, CartItem, User } from "@prisma/client";
+
+/**
+ * Extended Product type with category included.
+ * Used when fetching products with their category data.
+ */
+export type ProductWithCategory = Product & {
+  category: Category;
+};
+
+/**
+ * Cart item with full product details.
+ * Used in cart page and cart store.
+ */
+export type CartItemWithProduct = CartItem & {
+  product: ProductWithCategory;
+};
+
+/**
+ * Safe user type (excludes password hash).
+ * Used in client-side components and API responses.
+ */
+export type SafeUser = Omit<User, "password">;
+
+/**
+ * Product filter parameters for search/filtering.
+ */
+export interface ProductFilters {
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  search?: string;
+  sortBy?: "price-asc" | "price-desc" | "newest" | "rating";
+  page?: number;
+  limit?: number;
 }
 
-export interface CartItem {
-  id: string;
-  userId: string;
-  productId: string;
-  quantity: number;
-  product: Product;
+/**
+ * API response wrapper for consistent error handling.
+ */
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
 }
 
-export interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  image: string | null;
-  parentId: string | null;
-  sortOrder: number;
-  isActive: boolean;
-}
-
-export interface User {
-  id: string;
-  name: string | null;
-  email: string;
-  role: "USER" | "ADMIN";
-  image: string | null;
-}
+/**
+ * Cart action types for the cart store.
+ */
+export type CartAction = 
+  | { type: "ADD_ITEM"; payload: { productId: string; quantity?: number } }
+  | { type: "REMOVE_ITEM"; payload: { productId: string } }
+  | { type: "UPDATE_QUANTITY"; payload: { productId: string; quantity: number } }
+  | { type: "CLEAR_CART" }
+  | { type: "SET_ITEMS"; payload: CartItemWithProduct[] };

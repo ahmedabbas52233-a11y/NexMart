@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Global Styles
+ * 
+ * WHY these custom styles:
+ * - Custom scrollbar for consistent cross-browser experience
+ * - Focus visible for accessibility (keyboard navigation)
+ * - Selection color matches brand
+ * - Smooth scrolling for better UX
+ */
+
 @layer base {
   * {
     @apply border-border;
@@ -15,7 +25,6 @@
 
   body {
     @apply bg-background text-text-primary;
-    font-family: "Inter", system-ui, sans-serif;
   }
 
   /* Custom Scrollbar */
@@ -48,6 +57,7 @@
 }
 
 @layer utilities {
+  /* Line clamp utilities */
   .line-clamp-1 {
     overflow: hidden;
     display: -webkit-box;

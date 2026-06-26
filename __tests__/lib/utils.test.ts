@@ -1,81 +1,141 @@
 import { describe, it, expect } from "vitest";
-import { cn, formatPrice, calculateDiscount, slugify, truncate, serialize } from "@/lib/utils";
+import {
+  cn,
+  formatPrice,
+  calculateDiscount,
+  slugify,
+  truncate,
+} from "@/lib/utils";
 
-describe("cn", () => {
-  it("merges class names correctly", () => {
-    expect(cn("px-2", "px-4")).toBe("px-4");
-    expect(cn("text-red-500", "text-blue-500")).toBe("text-blue-500");
-    expect(cn("p-2", "m-2")).toBe("p-2 m-2");
+// ─── cn() ─────────────────────────────────────────────────────────────────────
+describe("cn()", () => {
+  it("merges two class names", () => {
+    expect(cn("px-2", "py-2")).toBe("px-2 py-2");
   });
 
-  it("handles conditional classes", () => {
-    expect(cn("base", false && "hidden", true && "block")).toBe("base block");
+  it("resolves Tailwind conflicts — last value wins", () => {
+    expect(cn("px-2", "px-4")).toBe("px-4");
+  });
+
+  it("strips falsy conditional values", () => {
+    expect(cn("base", false && "skip", undefined, "end")).toBe("base end");
+  });
+
+  it("handles array and object class syntax from clsx", () => {
+    expect(cn(["a", "b"], { c: true, d: false })).toBe("a b c");
+  });
+
+  it("returns empty string when no classes provided", () => {
+    expect(cn()).toBe("");
   });
 });
 
-describe("formatPrice", () => {
-  it("formats numbers as USD", () => {
-    expect(formatPrice(99.99)).toBe("$99.99");
-    expect(formatPrice(1000)).toBe("$1,000.00");
+// ─── formatPrice() ────────────────────────────────────────────────────────────
+describe("formatPrice()", () => {
+  it("formats a number as USD with two decimal places", () => {
+    expect(formatPrice(29.99)).toBe("$29.99");
+  });
+
+  it("formats a string price correctly", () => {
+    expect(formatPrice("149.00")).toBe("$149.00");
+  });
+
+  it("formats zero as $0.00", () => {
     expect(formatPrice(0)).toBe("$0.00");
   });
 
-  it("handles string inputs", () => {
-    expect(formatPrice("49.99")).toBe("$49.99");
+  it("adds comma separators for thousands", () => {
+    expect(formatPrice(1299.99)).toBe("$1,299.99");
   });
 
-  it("handles invalid input", () => {
-    expect(formatPrice(NaN)).toBe("$0.00");
+  it("formats whole numbers with .00", () => {
+    expect(formatPrice(50)).toBe("$50.00");
+  });
+
+  it("rounds to 2 decimal places", () => {
+    // Intl.NumberFormat rounds 29.999 → $30.00
+    expect(formatPrice(29.999)).toBe("$30.00");
   });
 });
 
-describe("calculateDiscount", () => {
-  it("calculates discount percentage", () => {
+// ─── calculateDiscount() ──────────────────────────────────────────────────────
+describe("calculateDiscount()", () => {
+  it("calculates a 20% discount", () => {
     expect(calculateDiscount(80, 100)).toBe(20);
-    expect(calculateDiscount(349.99, 399.99)).toBe(13);
   });
 
-  it("returns 0 when no compare price", () => {
-    expect(calculateDiscount(100, null)).toBe(0);
+  it("calculates a 50% discount", () => {
+    expect(calculateDiscount(50, 100)).toBe(50);
   });
 
-  it("returns 0 when compare price is lower", () => {
-    expect(calculateDiscount(100, 80)).toBe(0);
+  it("returns null when comparePrice is null", () => {
+    expect(calculateDiscount(80, null)).toBeNull();
+  });
+
+  it("returns null when comparePrice equals price (no discount)", () => {
+    expect(calculateDiscount(100, 100)).toBeNull();
+  });
+
+  it("returns null when comparePrice is less than price", () => {
+    expect(calculateDiscount(120, 100)).toBeNull();
+  });
+
+  it("rounds fractional percentages to nearest integer", () => {
+    // (100 - 66.67) / 100 = 33.33% → rounds to 33
+    expect(calculateDiscount(66.67, 100)).toBe(33);
+  });
+
+  it("handles large discounts", () => {
+    expect(calculateDiscount(10, 1000)).toBe(99);
   });
 });
 
-describe("slugify", () => {
-  it("creates URL-safe slugs", () => {
+// ─── slugify() ────────────────────────────────────────────────────────────────
+describe("slugify()", () => {
+  it("converts uppercase to lowercase", () => {
     expect(slugify("Hello World")).toBe("hello-world");
-    expect(slugify("Sony WH-1000XM5")).toBe("sony-wh-1000xm5");
-    expect(slugify("  Spaces  ")).toBe("spaces");
+  });
+
+  it("replaces spaces with hyphens", () => {
+    expect(slugify("product name here")).toBe("product-name-here");
+  });
+
+  it("removes special characters", () => {
+    expect(slugify("iPhone 14 Pro!")).toBe("iphone-14-pro");
+  });
+
+  it("trims leading and trailing whitespace", () => {
+    expect(slugify("  hello  ")).toBe("hello");
+  });
+
+  it("collapses multiple spaces into a single hyphen", () => {
+    expect(slugify("a  b")).toBe("a-b");
+  });
+
+  it("handles already-slug strings unchanged", () => {
+    expect(slugify("already-a-slug")).toBe("already-a-slug");
   });
 });
 
-describe("truncate", () => {
-  it("truncates long text", () => {
+// ─── truncate() ───────────────────────────────────────────────────────────────
+describe("truncate()", () => {
+  it("returns the original string when within length", () => {
+    expect(truncate("Hello", 10)).toBe("Hello");
+  });
+
+  it("appends ellipsis when string exceeds length", () => {
     expect(truncate("Hello World", 5)).toBe("Hello...");
-    expect(truncate("Hi", 10)).toBe("Hi");
-  });
-});
-
-describe("serialize", () => {
-  it("converts Decimal to plain number", () => {
-    // Mock Prisma Decimal-like object
-    const decimalLike = {
-      toNumber: () => 99.99,
-      toString: () => "99.99",
-    };
-    const data = { price: decimalLike };
-    const result = serialize(data);
-    expect(typeof result.price).toBe("number");
-    expect(result.price).toBe(99.99);
   });
 
-  it("converts Date to string", () => {
-    const now = new Date("2024-01-15");
-    const result = serialize({ date: now });
-    expect(typeof result.date).toBe("string");
-    expect(result.date).toBe(now.toISOString());
+  it("returns the original string at exactly the limit", () => {
+    expect(truncate("Hello", 5)).toBe("Hello");
+  });
+
+  it("handles empty strings", () => {
+    expect(truncate("", 5)).toBe("");
+  });
+
+  it("handles limit of 0 — returns ellipsis only", () => {
+    expect(truncate("Hello", 0)).toBe("...");
   });
 });

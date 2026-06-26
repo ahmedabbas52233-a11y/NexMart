@@ -1,3 +1,6 @@
+// This is your Prisma schema file.
+// Learn more: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,6 +10,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User model - managed by NextAuth adapter
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  password      String?   // For credentials provider (hashed)
+  role          UserRole  @default(USER)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // NextAuth relations
+  accounts      Account[]
+  sessions      Session[]
+
+  // App relations
+  cartItems     CartItem[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+// NextAuth required models
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -24,6 +55,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@map("accounts")
 }
 
 model Session {
@@ -32,21 +64,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          Role      @default(USER)
-  accounts      Account[]
-  sessions      Session[]
-  cartItems     CartItem[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  @@map("sessions")
 }
 
 model VerificationToken {
@@ -55,62 +74,95 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Product model - core eCommerce entity
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String   @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  comparePrice Decimal? @db.Decimal(10, 2) // Original price for discounts
+  stock       Int      @default(0)
+  images      String[] // Array of image URLs
+  sku         String?  @unique
+
+  // Categorization
+  category    Category @relation(fields: [categoryId], references: [id])
+  categoryId  String
+
+  // Product attributes
+  brand       String?
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+
+  // SEO & metadata
+  metaTitle   String?
+  metaDesc    String?
+
+  // Status
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  cartItems   CartItem[]
+
+  @@index([categoryId])
+  @@index([isFeatured])
+  @@index([isActive])
+  @@index([slug])
+  @@map("products")
 }
 
 model Category {
   id          String    @id @default(cuid())
-  name        String
+  name        String    @unique
   slug        String    @unique
   description String?
-  image       String?
+  image       String?   // Category icon/image
+
+  // Hierarchy support (optional)
   parentId    String?
   parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryHierarchy")
-  products    Product[]
+
+  // Metadata
   sortOrder   Int       @default(0)
   isActive    Boolean   @default(true)
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  // Relations
+  products    Product[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("categories")
 }
 
-model Product {
-  id            String     @id @default(cuid())
-  name          String
-  slug          String     @unique
-  description   String?
-  price         Decimal    @db.Decimal(10, 2)
-  comparePrice  Decimal?   @db.Decimal(10, 2)
-  stock         Int        @default(0)
-  images        String[]
-  sku           String?
-  brand         String?
-  rating        Decimal    @default(0) @db.Decimal(3, 2)
-  reviewCount   Int        @default(0)
-  isActive      Boolean    @default(true)
-  isFeatured    Boolean    @default(false)
-  categoryId    String
-  category      Category   @relation(fields: [categoryId], references: [id])
-  cartItems     CartItem[]
-  metaTitle     String?
-  metaDesc      String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-}
-
+// Cart system - server-side persistence (better than localStorage for multi-device)
 model CartItem {
   id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int      @default(1)
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, productId])
-}
-
-enum Role {
-  USER
-  ADMIN
+  @@unique([userId, productId]) // One cart item per product per user
+  @@index([userId])
+  @@map("cart_items")
 }

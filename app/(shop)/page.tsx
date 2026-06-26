@@ -1,187 +1,291 @@
+import { notFound } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { serialize } from "@/lib/utils";
-import ProductCard from "@/components/product/ProductCard";
+import { formatPrice, calculateDiscount, serialize } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Truck, Shield, RotateCcw, Headphones } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ProductCard } from "@/components/product/product-card";
+import { 
+  Star, 
+  Heart, 
+  Share2, 
+  Truck, 
+  Shield, 
+  RotateCcw,
+  Check,
+} from "lucide-react";
+import { AddToCartButton } from "@/components/product/add-to-cart-button";
 
-export const revalidate = 60;
+/**
+ * Product Detail Page
+ * 
+ * Server Component fetching product by slug.
+ * WHY Server Component:
+ * - SEO-critical page (product name, description in HTML)
+ * - Direct DB access (no API roundtrip)
+ * - Generates OG tags for social sharing
+ * 
+ * Features:
+ * - Image gallery with main image + thumbnails
+ * - Product info, specs, stock status
+ * - Quantity selector (client component)
+ * - Add to cart (client component)
+ * - Related products section
+ */
 
-async function getHomeData() {
-  const [featuredProducts, categories, deals] = await Promise.all([
-    prisma.product.findMany({
-      where: { isFeatured: true, isActive: true },
-      take: 8,
-      include: { category: { select: { id: true, name: true, slug: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.category.findMany({
-      where: { isActive: true },
-      take: 6,
-      orderBy: { sortOrder: "asc" },
-    }),
-    prisma.product.findMany({
-      where: { comparePrice: { not: null }, isActive: true },
-      take: 4,
-      include: { category: { select: { id: true, name: true, slug: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+interface ProductPageProps {
+  params: { id: string };
+}
+
+async function getProduct(slug: string) {
+  const product = await prisma.product.findFirst({
+    where: {
+      OR: [{ slug }, { id: slug }],
+      isActive: true,
+    },
+    include: { category: true },
+  });
+
+  if (!product) return null;
+
+  // Fetch related products from same category
+  const relatedProducts = await prisma.product.findMany({
+    where: {
+      categoryId: product.categoryId,
+      id: { not: product.id },
+      isActive: true,
+    },
+    include: { category: true },
+    take: 4,
+  });
+
+  return { product: serialize(product), relatedProducts: serialize(relatedProducts) };
+}
+
+export async function generateMetadata({ params }: ProductPageProps) {
+  const data = await getProduct(params.id);
+  if (!data) return { title: "Product Not Found" };
 
   return {
-    featuredProducts: serialize(featuredProducts),
-    categories: serialize(categories),
-    deals: serialize(deals),
+    title: data.product.name,
+    description: data.product.description.slice(0, 160),
+    openGraph: {
+      images: data.product.images[0] ? [data.product.images[0]] : [],
+    },
   };
 }
 
-export default async function HomePage() {
-  const { featuredProducts, categories, deals } = await getHomeData();
+export default async function ProductPage({ params }: ProductPageProps) {
+  const data = await getProduct(params.id);
 
-  const features = [
-    { icon: Truck, title: "Free Shipping", desc: "On orders over $50" },
-    { icon: Shield, title: "Secure Payment", desc: "100% protected checkout" },
-    { icon: RotateCcw, title: "Easy Returns", desc: "30-day return policy" },
-    { icon: Headphones, title: "24/7 Support", desc: "Dedicated support team" },
-  ];
+  if (!data) {
+    notFound();
+  }
+
+  const { product, relatedProducts } = data;
+  const discount = calculateDiscount(
+    Number(product.price),
+    product.comparePrice ? Number(product.comparePrice) : null
+  );
+
+  const inStock = product.stock > 0;
+  const lowStock = product.stock > 0 && product.stock <= 5;
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-r from-[#0D6EFD] to-[#084298] text-white">
-        <div className="container mx-auto px-4 py-16 md:py-24">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-              Discover Premium Electronics
-            </h1>
-            <p className="mt-4 text-lg md:text-xl text-white/80">
-              Shop the latest gadgets, audio gear, and smart devices with free shipping and 30-day returns.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link href="/products">
-                <Button size="lg" className="bg-white text-[#0D6EFD] hover:bg-white/90">
-                  Shop Now <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              <Link href="/products">
-                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
-                  View Deals
-                </Button>
-              </Link>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 text-sm text-text-secondary mb-6">
+        <Link href="/" className="hover:text-primary transition-colors">Home</Link>
+        <span>/</span>
+        <Link href="/products" className="hover:text-primary transition-colors">Products</Link>
+        <span>/</span>
+        <Link 
+          href={`/products?category=${product.category.slug}`} 
+          className="hover:text-primary transition-colors capitalize"
+        >
+          {product.category.name}
+        </Link>
+        <span>/</span>
+        <span className="text-text-primary truncate max-w-xs">{product.name}</span>
+      </nav>
+
+      <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+        {/* Image Gallery */}
+        <div className="space-y-4">
+          {/* Main Image */}
+          <div className="relative aspect-square rounded-2xl overflow-hidden bg-background border border-border">
+            <Image
+              src={product.images[0] || "/placeholder-product.jpg"}
+              alt={product.name}
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
+            {discount && (
+              <Badge variant="danger" className="absolute top-4 left-4 text-sm px-3 py-1">
+                -{discount}% OFF
+              </Badge>
+            )}
+            {!inStock && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <Badge variant="secondary" className="text-lg px-4 py-2">Out of Stock</Badge>
+              </div>
+            )}
+          </div>
+
+          {/* Thumbnails */}
+          {product.images.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {product.images.map((image, index) => (
+                <button
+                  key={index}
+                  aria-label={`View image ${index + 1}`}
+                  className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden border-2 border-primary bg-background"
+                >
+                  <Image
+                    src={image}
+                    alt={`${product.name} - ${index + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Product Info */}
+        <div className="space-y-6">
+          {/* Header */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline">{product.category.name}</Badge>
+              {product.brand && (
+                <Badge variant="secondary">{product.brand}</Badge>
+              )}
+            </div>
+            <h1 className="text-heading-1 text-text-primary">{product.name}</h1>
+
+            {/* Rating */}
+            <div className="flex items-center gap-3 mt-3">
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`h-5 w-5 ${
+                      star <= Math.round(product.rating)
+                        ? "fill-warning text-warning"
+                        : "fill-border-light text-border-light"
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-sm text-text-secondary">
+                {product.rating} ({product.reviewCount} reviews)
+              </span>
+            </div>
+          </div>
+
+          {/* Price */}
+          <div className="flex items-baseline gap-3 p-4 rounded-xl bg-primary-50 border border-primary-100">
+            <span className="text-3xl font-bold text-primary">
+              {formatPrice(Number(product.price))}
+            </span>
+            {product.comparePrice && (
+              <span className="text-lg text-text-secondary line-through">
+                {formatPrice(Number(product.comparePrice))}
+              </span>
+            )}
+            {discount && (
+              <Badge variant="danger" className="ml-auto">
+                Save {discount}%
+              </Badge>
+            )}
+          </div>
+
+          {/* Description */}
+          <p className="text-body-lg text-text-secondary leading-relaxed">
+            {product.description}
+          </p>
+
+          {/* Stock Status */}
+          <div className="flex items-center gap-2">
+            {inStock ? (
+              <>
+                <Check className="h-5 w-5 text-success" />
+                <span className="text-sm text-success font-medium">In Stock</span>
+                {lowStock && (
+                  <span className="text-sm text-warning">Only {product.stock} left - order soon!</span>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="h-2 w-2 rounded-full bg-danger" />
+                <span className="text-sm text-danger font-medium">Out of Stock</span>
+              </>
+            )}
+          </div>
+
+          {/* SKU */}
+          {product.sku && (
+            <div className="text-sm text-text-secondary">
+              SKU: <span className="font-mono text-text-primary">{product.sku}</span>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
+            <AddToCartButton 
+              productId={product.id} 
+              maxStock={product.stock}
+              disabled={!inStock}
+            />
+            <Button variant="secondary" size="lg" className="flex-1">
+              <Heart className="h-5 w-5 mr-2" />
+              Wishlist
+            </Button>
+            <Button variant="ghost" size="icon" className="h-12 w-12">
+              <Share2 className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Trust Badges */}
+          <div className="grid grid-cols-3 gap-3 pt-4">
+            <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-surface border border-border text-center">
+              <Truck className="h-6 w-6 text-primary" />
+              <span className="text-xs text-text-secondary">Free Shipping</span>
+            </div>
+            <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-surface border border-border text-center">
+              <Shield className="h-6 w-6 text-primary" />
+              <span className="text-xs text-text-secondary">2 Year Warranty</span>
+            </div>
+            <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-surface border border-border text-center">
+              <RotateCcw className="h-6 w-6 text-primary" />
+              <span className="text-xs text-text-secondary">30-Day Returns</span>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Features Bar */}
-      <section className="border-b border-[#DEE2E7] bg-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {features.map((feature) => (
-              <div key={feature.title} className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-[#E7F1FF] flex items-center justify-center shrink-0">
-                  <feature.icon className="w-6 h-6 text-[#0D6EFD]" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-[#1C1C1C] text-sm">{feature.title}</h3>
-                  <p className="text-xs text-[#8B96A5]">{feature.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Categories */}
-      <section className="py-12 md:py-16">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-[#1C1C1C]">Shop by Category</h2>
-            <Link href="/products" className="text-[#0D6EFD] hover:underline text-sm font-medium">
+      {/* Related Products */}
+      {relatedProducts.length > 0 && (
+        <section className="mt-16">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-heading-2 text-text-primary">You May Also Like</h2>
+            <Link href={`/products?category=${product.category.slug}`} className="text-sm text-primary hover:underline">
               View All
             </Link>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((category: any) => (
-              <Link
-                key={category.id}
-                href={`/products?category=${category.slug}`}
-                className="group bg-white rounded-xl border border-[#DEE2E7] p-6 text-center hover:shadow-lg transition-all hover:border-[#0D6EFD]/30"
-              >
-                <div className="w-16 h-16 mx-auto bg-[#E7F1FF] rounded-full flex items-center justify-center mb-3 group-hover:bg-[#CCE3FF] transition-colors">
-                  <span className="text-2xl font-bold text-[#0D6EFD]">{category.name.charAt(0)}</span>
-                </div>
-                <h3 className="font-medium text-[#1C1C1C] text-sm">{category.name}</h3>
-              </Link>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {relatedProducts.map((p) => (
+              <ProductCard key={p.id} product={p} />
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Deals Section */}
-      {deals.length > 0 && (
-        <section className="py-12 md:py-16 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-[#1C1C1C]">Hot Deals</h2>
-                <p className="text-[#8B96A5] mt-1">Limited time offers on top products</p>
-              </div>
-              <Link href="/products" className="text-[#0D6EFD] hover:underline text-sm font-medium">
-                View All Deals
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {deals.map((product: any) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
           </div>
         </section>
       )}
-
-      {/* Featured Products */}
-      <section className="py-12 md:py-16">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-[#1C1C1C]">Featured Products</h2>
-              <p className="text-[#8B96A5] mt-1">Handpicked by our experts</p>
-            </div>
-            <Link href="/products" className="text-[#0D6EFD] hover:underline text-sm font-medium">
-              View All
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product: any) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Promo Banner */}
-      <section className="py-12 md:py-16">
-        <div className="container mx-auto px-4">
-          <div className="bg-gradient-to-r from-[#1C1C1C] to-[#2D2D2D] rounded-2xl p-8 md:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="max-w-lg">
-              <span className="text-[#0D6EFD] font-semibold text-sm uppercase tracking-wider">New Arrivals</span>
-              <h2 className="text-3xl md:text-4xl font-bold mt-2">Get 20% Off Your First Order</h2>
-              <p className="text-white/70 mt-3">Use code WELCOME20 at checkout. Valid for new customers only.</p>
-              <Link href="/products">
-                <Button size="lg" className="mt-6 bg-[#0D6EFD] hover:bg-[#0A58CA]">
-                  Shop Now <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </div>
-            <div className="hidden md:block">
-              <div className="w-64 h-64 bg-white/10 rounded-full flex items-center justify-center">
-                <span className="text-6xl font-bold text-white/20">20%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
