@@ -15,22 +15,6 @@ import {
   ArrowRight
 } from "lucide-react";
 
-/**
- * Products Listing Page
- * 
- * Server Component with searchParams for URL-based filtering.
- * WHY URL params over state:
- * 1. Shareable URLs ("Check out laptops under $1000")
- * 2. Browser back/forward works naturally
- * 3. SEO-friendly (search engines can crawl filtered pages)
- * 4. No client-side JS needed for initial render
- * 
- * Architecture:
- * - Server fetches data directly from Prisma (no API call overhead)
- * - Suspense boundaries for progressive loading
- * - Sidebar filters + mobile filter drawer
- */
-
 interface ProductsPageProps {
   searchParams: {
     category?: string;
@@ -128,7 +112,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      {/* Breadcrumb & Title */}
       <div className="mb-6">
         <nav className="flex items-center gap-2 text-sm text-text-secondary mb-2">
           <Link href="/" className="hover:text-primary transition-colors">Home</Link>
@@ -145,7 +128,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           {searchParams.search 
             ? `Search: "${searchParams.search}"` 
             : searchParams.category 
-              ? categories.find(c => c.slug === searchParams.category)?.name || "Products"
+              ? categories.find((c: any) => c.slug === searchParams.category)?.name || "Products"
               : "All Products"
           }
         </h1>
@@ -153,10 +136,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Filters - Desktop */}
         <aside className="hidden lg:block w-64 shrink-0">
           <div className="sticky top-24 space-y-6">
-            {/* Categories */}
             <div className="rounded-xl border border-border bg-surface p-4">
               <h3 className="font-semibold text-text-primary mb-3">Categories</h3>
               <div className="space-y-1">
@@ -170,7 +151,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 >
                   All Categories
                 </Link>
-                {categories.map((category) => (
+                {categories.map((category: any) => (
                   <Link
                     key={category.id}
                     href={buildUrl({ category: category.slug })}
@@ -186,7 +167,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               </div>
             </div>
 
-            {/* Price Range */}
             <div className="rounded-xl border border-border bg-surface p-4">
               <h3 className="font-semibold text-text-primary mb-3">Price Range</h3>
               <div className="space-y-2">
@@ -222,15 +202,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           </div>
         </aside>
 
-        {/* Main Content */}
         <div className="flex-1">
-          {/* Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-3 rounded-lg border border-border bg-surface">
             <div className="flex items-center gap-2">
               <span className="text-sm text-text-secondary hidden sm:inline">Sort by:</span>
-              <ProductSort
-                defaultValue={searchParams.sortBy || "newest"}
-              />
+              <ProductSort />
             </div>
 
             <div className="flex items-center gap-2">
@@ -240,9 +216,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             </div>
           </div>
 
-          {/* Mobile Filters */}
           <div className="lg:hidden mb-4 flex gap-2 overflow-x-auto pb-2">
-            {categories.map((category) => (
+            {categories.map((category: any) => (
               <Link
                 key={category.id}
                 href={buildUrl({ category: category.slug })}
@@ -257,11 +232,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             ))}
           </div>
 
-          {/* Product Grid */}
           <Suspense fallback={<ProductGridSkeleton />}>
             {products.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {products.map((product) => (
+                {products.map((product: any) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
@@ -277,7 +251,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             )}
           </Suspense>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 mt-8">
               <Link

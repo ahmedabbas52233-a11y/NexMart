@@ -17,20 +17,6 @@ import {
   Star
 } from "lucide-react";
 
-/**
- * Admin Products Page
- * 
- * Client Component because:
- * 1. Real-time CRUD operations (create, edit, delete)
-2. Modal state management
- * 3. Form handling for product creation/editing
- * 
- * WHY protected by middleware:
- * - Middleware.ts blocks non-ADMIN users at the edge
- * - This is a second layer of defense (defense in depth)
- * - API routes also check role server-side
- */
-
 interface Product {
   id: string;
   name: string;
@@ -288,10 +274,10 @@ export default function AdminProductsPage() {
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         {product.isFeatured && (
-                          <Badge variant="default" className="text-[10px]">Featured</Badge>
+                        <Badge variant="default" className="text-[10px]">Featured</Badge>
                         )}
                         {product.stock === 0 && (
-                          <Badge variant="danger" className="text-[10px]">Out</Badge>
+                        <Badge variant="destructive" className="text-[10px]">Out</Badge>
                         )}
                       </div>
                     </td>

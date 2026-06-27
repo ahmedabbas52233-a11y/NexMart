@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
@@ -8,25 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ShoppingCart, Eye, EyeOff } from "lucide-react";
 
-/**
- * Sign In Page
- * 
- * Client Component because:
- * 1. Uses signIn from next-auth/react (client-side only)
- * 2. Form state management (useState)
- * 3. Router navigation after successful login
- * 
- * WHY Credentials over OAuth only:
- * - Not all users have Google/GitHub accounts
- * - Admin accounts need credentials (seeded in DB)
- * - OAuth is optional enhancement
- * 
- * Security:
- * - Passwords never touch client (sent to API, hashed server-side)
- * - CSRF token automatically managed by NextAuth
- * - Rate limiting should be added in production (middleware or API)
- */
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
@@ -66,7 +49,6 @@ export default function SignInPage() {
   return (
     <div className="min-h-[calc(100vh-200px)] flex items-center justify-center py-12 px-4">
       <div className="w-full max-w-md space-y-8">
-        {/* Header */}
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
@@ -80,7 +62,6 @@ export default function SignInPage() {
           <p className="text-text-secondary mt-2">Sign in to your account to continue</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-danger">
@@ -133,7 +114,6 @@ export default function SignInPage() {
           </Button>
         </form>
 
-        {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-border" />
@@ -143,7 +123,6 @@ export default function SignInPage() {
           </div>
         </div>
 
-        {/* Social Login */}
         <div className="grid grid-cols-2 gap-3">
           <Button
             type="button"
@@ -170,7 +149,6 @@ export default function SignInPage() {
           </Button>
         </div>
 
-        {/* Sign Up Link */}
         <p className="text-center text-sm text-text-secondary">
           Don&apos;t have an account?{" "}
           <Link href="/auth/signup" className="text-primary font-medium hover:underline">
@@ -179,5 +157,13 @@ export default function SignInPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <SignInForm />
+    </Suspense>
   );
 }

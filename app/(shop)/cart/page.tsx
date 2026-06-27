@@ -18,20 +18,6 @@ import {
   Shield
 } from "lucide-react";
 
-/**
- * Cart Page
- * 
- * Client Component because:
- * 1. Uses useCartAPI (which uses useSession + Zustand)
- * 2. Real-time quantity updates
- * 3. Dynamic price calculations
- * 
- * WHY server-side cart persistence:
- * - Cart survives across devices when logged in
- * - Can be analyzed for recommendations
- * - Enables "abandoned cart" recovery emails
- * - Guest cart uses localStorage fallback
- */
 export default function CartPage() {
   const { data: session } = useSession();
   const { 
@@ -44,7 +30,6 @@ export default function CartPage() {
     syncWithServer 
   } = useCartAPI();
 
-  // Sync cart with server on mount (for logged-in users)
   useEffect(() => {
     if (session?.user) {
       syncWithServer();
@@ -52,7 +37,7 @@ export default function CartPage() {
   }, [session, syncWithServer]);
 
   const shipping = totalPrice > 500 ? 0 : 15;
-  const tax = totalPrice * 0.08; // 8% tax
+  const tax = totalPrice * 0.08;
   const grandTotal = totalPrice + shipping + tax;
 
   if (items.length === 0) {
@@ -83,20 +68,18 @@ export default function CartPage() {
       <p className="text-text-secondary mb-8">{totalItems} items in your cart</p>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
           {items.map((item) => (
             <div 
               key={item.id} 
               className="flex gap-4 p-4 rounded-xl border border-border bg-surface hover:shadow-card transition-shadow"
             >
-              {/* Product Image */}
               <Link 
                 href={`/product/${item.product.slug}`}
                 className="relative h-24 w-24 sm:h-32 sm:w-32 shrink-0 rounded-lg overflow-hidden bg-background"
               >
                 <Image
-                  src={item.product.images[0] || "/placeholder-product.jpg"}
+                  src={item.product.images?.[0] || "/placeholder-product.jpg"}
                   alt={item.product.name}
                   fill
                   className="object-cover"
@@ -104,7 +87,6 @@ export default function CartPage() {
                 />
               </Link>
 
-              {/* Product Details */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -113,7 +95,7 @@ export default function CartPage() {
                         {item.product.name}
                       </h3>
                     </Link>
-                    <p className="text-xs text-text-secondary mt-1">{item.product.category.name}</p>
+                    <p className="text-xs text-text-secondary mt-1">{item.product.category?.name}</p>
                   </div>
                   <button
                     onClick={() => removeFromCart(item.productId)}
@@ -125,7 +107,6 @@ export default function CartPage() {
                 </div>
 
                 <div className="flex items-end justify-between mt-3">
-                  {/* Quantity Controls */}
                   <div className="flex items-center border border-border rounded-lg bg-background">
                     <button
                       onClick={() => updateQuantity(item.productId, item.quantity - 1)}
@@ -138,7 +119,7 @@ export default function CartPage() {
                     <span className="w-10 text-center text-sm font-medium">{item.quantity}</span>
                     <button
                       onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                      disabled={item.quantity >= item.product.stock || isLoading}
+                      disabled={item.quantity >= (item.product.stock || 0) || isLoading}
                       aria-label="Increase quantity"
                       className="h-8 w-8 flex items-center justify-center text-text-secondary hover:text-text-primary disabled:opacity-30 transition-colors"
                     >
@@ -146,7 +127,6 @@ export default function CartPage() {
                     </button>
                   </div>
 
-                  {/* Price */}
                   <div className="text-right">
                     <p className="text-sm font-semibold text-text-primary">
                       {formatPrice(Number(item.product.price) * item.quantity)}
@@ -160,14 +140,12 @@ export default function CartPage() {
             </div>
           ))}
 
-          {/* Continue Shopping */}
           <Link href="/products" className="inline-flex items-center text-sm text-primary hover:underline mt-4">
             <ArrowRight className="h-4 w-4 mr-1 rotate-180" />
             Continue Shopping
           </Link>
         </div>
 
-        {/* Order Summary */}
         <div className="lg:col-span-1">
           <div className="sticky top-24 rounded-xl border border-border bg-surface p-6 space-y-4">
             <h2 className="text-lg font-semibold text-text-primary">Order Summary</h2>
@@ -207,7 +185,6 @@ export default function CartPage() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 
-            {/* Trust Badges */}
             <div className="grid grid-cols-3 gap-2 pt-2">
               <div className="flex flex-col items-center gap-1 text-center">
                 <Package className="h-5 w-5 text-text-secondary" />

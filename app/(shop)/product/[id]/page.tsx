@@ -17,23 +17,6 @@ import {
 } from "lucide-react";
 import { AddToCartButton } from "@/components/product/add-to-cart-button";
 
-/**
- * Product Detail Page
- * 
- * Server Component fetching product by slug.
- * WHY Server Component:
- * - SEO-critical page (product name, description in HTML)
- * - Direct DB access (no API roundtrip)
- * - Generates OG tags for social sharing
- * 
- * Features:
- * - Image gallery with main image + thumbnails
- * - Product info, specs, stock status
- * - Quantity selector (client component)
- * - Add to cart (client component)
- * - Related products section
- */
-
 interface ProductPageProps {
   params: { id: string };
 }
@@ -49,7 +32,6 @@ async function getProduct(slug: string) {
 
   if (!product) return null;
 
-  // Fetch related products from same category
   const relatedProducts = await prisma.product.findMany({
     where: {
       categoryId: product.categoryId,
@@ -94,7 +76,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-text-secondary mb-6">
         <Link href="/" className="hover:text-primary transition-colors">Home</Link>
         <span>/</span>
@@ -111,9 +92,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </nav>
 
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-        {/* Image Gallery */}
         <div className="space-y-4">
-          {/* Main Image */}
           <div className="relative aspect-square rounded-2xl overflow-hidden bg-background border border-border">
             <Image
               src={product.images[0] || "/placeholder-product.jpg"}
@@ -124,7 +103,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               sizes="(max-width: 1024px) 100vw, 50vw"
             />
             {discount && (
-              <Badge variant="danger" className="absolute top-4 left-4 text-sm px-3 py-1">
+              <Badge variant="destructive" className="absolute top-4 left-4 text-sm px-3 py-1">
                 -{discount}% OFF
               </Badge>
             )}
@@ -135,10 +114,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
             )}
           </div>
 
-          {/* Thumbnails */}
           {product.images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {product.images.map((image, index) => (
+              {product.images.map((image: string, index: number) => (
                 <button
                   key={index}
                   aria-label={`View image ${index + 1}`}
@@ -157,9 +135,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           )}
         </div>
 
-        {/* Product Info */}
         <div className="space-y-6">
-          {/* Header */}
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline">{product.category.name}</Badge>
@@ -169,7 +145,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
             <h1 className="text-heading-1 text-text-primary">{product.name}</h1>
 
-            {/* Rating */}
             <div className="flex items-center gap-3 mt-3">
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -189,7 +164,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
           </div>
 
-          {/* Price */}
           <div className="flex items-baseline gap-3 p-4 rounded-xl bg-primary-50 border border-primary-100">
             <span className="text-3xl font-bold text-primary">
               {formatPrice(Number(product.price))}
@@ -200,18 +174,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
               </span>
             )}
             {discount && (
-              <Badge variant="danger" className="ml-auto">
+              <Badge variant="destructive" className="ml-auto">
                 Save {discount}%
               </Badge>
             )}
           </div>
 
-          {/* Description */}
           <p className="text-body-lg text-text-secondary leading-relaxed">
             {product.description}
           </p>
 
-          {/* Stock Status */}
           <div className="flex items-center gap-2">
             {inStock ? (
               <>
@@ -229,18 +201,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
             )}
           </div>
 
-          {/* SKU */}
           {product.sku && (
             <div className="text-sm text-text-secondary">
               SKU: <span className="font-mono text-text-primary">{product.sku}</span>
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
             <AddToCartButton 
               productId={product.id} 
-              maxStock={product.stock}
               disabled={!inStock}
             />
             <Button variant="secondary" size="lg" className="flex-1">
@@ -252,7 +221,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </Button>
           </div>
 
-          {/* Trust Badges */}
           <div className="grid grid-cols-3 gap-3 pt-4">
             <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-surface border border-border text-center">
               <Truck className="h-6 w-6 text-primary" />
@@ -270,7 +238,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
         </div>
       </div>
 
-      {/* Related Products */}
       {relatedProducts.length > 0 && (
         <section className="mt-16">
           <div className="flex items-center justify-between mb-6">
@@ -280,7 +247,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {relatedProducts.map((p) => (
+            {relatedProducts.map((p: any) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>

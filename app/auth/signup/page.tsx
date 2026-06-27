@@ -7,15 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ShoppingCart, Eye, EyeOff } from "lucide-react";
 
-/**
- * Sign Up Page
- * 
- * Creates a new user via API route, then redirects to sign in.
- * WHY separate registration from NextAuth:
- * - NextAuth handles authentication, not registration
- * - We need custom validation (password strength, email uniqueness)
- * - Can send welcome emails, verification, etc.
- */
 export default function SignUpPage() {
   const router = useRouter();
   const [name, setName] = useState("");

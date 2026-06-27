@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,24 +14,9 @@ import {
   Pencil, 
   Trash2, 
   Search,
-
   Eye,
   Star
 } from "lucide-react";
-
-/**
- * Admin Products Page
- * 
- * Client Component because:
- * 1. Real-time CRUD operations (create, edit, delete)
-2. Modal state management
- * 3. Form handling for product creation/editing
- * 
- * WHY protected by middleware:
- * - Middleware.ts blocks non-ADMIN users at the edge
- * - This is a second layer of defense (defense in depth)
- * - API routes also check role server-side
- */
 
 interface Product {
   id: string;
@@ -48,7 +35,6 @@ interface Product {
 }
 
 export default function AdminProductsPage() {
-
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,7 +42,6 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -174,7 +159,6 @@ export default function AdminProductsPage() {
 
   return (
     <div className="p-8">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Products</h1>
@@ -186,7 +170,6 @@ export default function AdminProductsPage() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Total Products", value: products.length },
@@ -201,7 +184,6 @@ export default function AdminProductsPage() {
         ))}
       </div>
 
-      {/* Search */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
         <Input
@@ -213,7 +195,6 @@ export default function AdminProductsPage() {
         />
       </div>
 
-      {/* Products Table */}
       <div className="rounded-xl border border-border bg-surface overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -291,7 +272,7 @@ export default function AdminProductsPage() {
                           <Badge variant="default" className="text-[10px]">Featured</Badge>
                         )}
                         {product.stock === 0 && (
-                          <Badge variant="danger" className="text-[10px]">Out</Badge>
+                          <Badge variant="destructive" className="text-[10px]">Out</Badge>
                         )}
                       </div>
                     </td>
@@ -328,7 +309,6 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-surface border border-border shadow-2xl">
@@ -412,7 +392,6 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* Delete Confirmation */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="w-full max-w-sm rounded-2xl bg-surface border border-border shadow-2xl p-6 text-center">
@@ -427,7 +406,10 @@ export default function AdminProductsPage() {
               <Button variant="secondary" onClick={() => setDeleteConfirm(null)} className="flex-1">
                 Cancel
               </Button>
-              <Button variant="danger" onClick={() => handleDelete(deleteConfirm)} className="flex-1">
+              <Button 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white" 
+                onClick={() => handleDelete(deleteConfirm)}
+              >
                 Delete
               </Button>
             </div>

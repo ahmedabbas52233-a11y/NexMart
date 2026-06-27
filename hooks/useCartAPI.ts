@@ -1,38 +1,53 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useCartStore } from "./useCart";
+import { CartItemWithProduct } from "@/types";
 import { toast } from "sonner";
 
-/**
- * useCartAPI Hook
- * 
- * WHY: Separates API logic from state management.
- * Provides optimistic updates with rollback on error.
- * Handles both authenticated (server) and guest (localStorage) carts.
- */
 export function useCartAPI() {
   const { data: session } = useSession();
-  const store = useCartStore();
+
+  const items = useCartStore((state: { items: CartItemWithProduct[] }) => state.items);
+  const isLoading = useCartStore((state: { isLoading: boolean }) => state.isLoading);
+  const isOpen = useCartStore((state: { isOpen: boolean }) => state.isOpen);
+  const addItem = useCartStore((state: { addItem: (item: CartItemWithProduct) => void }) => state.addItem);
+  const removeItem = useCartStore((state: { removeItem: (productId: string) => void }) => state.removeItem);
+  const updateQuantityStore = useCartStore((state: { updateQuantity: (productId: string, quantity: number) => void }) => state.updateQuantity);
+  const setItems = useCartStore((state: { setItems: (items: CartItemWithProduct[]) => void }) => state.setItems);
+  const setLoading = useCartStore((state: { setLoading: (loading: boolean) => void }) => state.setLoading);
+  const clearCart = useCartStore((state: { clearCart: () => void }) => state.clearCart);
+  const toggleCart = useCartStore((state: { toggleCart: () => void }) => state.toggleCart);
+  const setCartOpen = useCartStore((state: { setCartOpen: (open: boolean) => void }) => state.setCartOpen);
+
+  const totalItems = useMemo(
+    () => items.reduce((sum: number, item: CartItemWithProduct) => sum + item.quantity, 0),
+    [items]
+  );
+
+  const totalPrice = useMemo(
+    () => items.reduce((sum: number, item: CartItemWithProduct) => sum + Number(item.product?.price || 0) * item.quantity, 0),
+    [items]
+  );
 
   const syncWithServer = useCallback(async () => {
     if (!session?.user) return;
 
     try {
-      store.setLoading(true);
+      setLoading(true);
       const res = await fetch("/api/cart");
       const data = await res.json();
 
       if (data.success) {
-        store.setItems(data.data);
+        setItems(data.data);
       }
     } catch (error) {
       console.error("Failed to sync cart:", error);
     } finally {
-      store.setLoading(false);
+      setLoading(false);
     }
-  }, [session, store]);
+  }, [session, setLoading, setItems]);
 
   const addToCart = useCallback(
     async (productId: string, quantity = 1) => {
@@ -42,9 +57,8 @@ export function useCartAPI() {
       }
 
       try {
-        store.setLoading(true);
+        setLoading(true);
 
-        // Optimistic update
         const res = await fetch("/api/cart", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -54,7 +68,7 @@ export function useCartAPI() {
         const data = await res.json();
 
         if (data.success) {
-          store.addItem(data.data);
+          addItem(data.data);
           toast.success("Added to cart");
         } else {
           toast.error(data.error || "Failed to add to cart");
@@ -62,19 +76,18 @@ export function useCartAPI() {
       } catch (error) {
         toast.error("Network error. Please try again.");
       } finally {
-        store.setLoading(false);
+        setLoading(false);
       }
     },
-    [session, store]
+    [session, addItem, setLoading]
   );
 
   const removeFromCart = useCallback(
     async (productId: string) => {
       if (!session?.user) return;
 
-      // Optimistic removal
-      const previousItems = store.items;
-      store.removeItem(productId);
+      const previousItems = items;
+      removeItem(productId);
 
       try {
         const res = await fetch(`/api/cart?productId=${productId}`, {
@@ -82,26 +95,25 @@ export function useCartAPI() {
         });
 
         if (!res.ok) {
-          // Rollback on error
-          store.setItems(previousItems);
+          setItems(previousItems);
           toast.error("Failed to remove item");
         } else {
           toast.success("Removed from cart");
         }
       } catch (error) {
-        store.setItems(previousItems);
+        setItems(previousItems);
         toast.error("Network error");
       }
     },
-    [session, store]
+    [session, items, removeItem, setItems]
   );
 
   const updateQuantity = useCallback(
     async (productId: string, quantity: number) => {
       if (!session?.user) return;
 
-      const previousItems = store.items;
-      store.updateQuantity(productId, quantity);
+      const previousItems = items;
+      updateQuantityStore(productId, quantity);
 
       try {
         const res = await fetch("/api/cart", {
@@ -111,29 +123,29 @@ export function useCartAPI() {
         });
 
         if (!res.ok) {
-          store.setItems(previousItems);
+          setItems(previousItems);
           toast.error("Failed to update quantity");
         }
       } catch (error) {
-        store.setItems(previousItems);
+        setItems(previousItems);
         toast.error("Network error");
       }
     },
-    [session, store]
+    [session, items, updateQuantityStore, setItems]
   );
 
   return {
-    items: store.items,
-    isLoading: store.isLoading,
-    isOpen: store.isOpen,
-    totalItems: store.totalItems(),
-    totalPrice: store.totalPrice(),
+    items,
+    isLoading,
+    isOpen,
+    totalItems,
+    totalPrice,
     addToCart,
     removeFromCart,
     updateQuantity,
-    clearCart: store.clearCart,
-    toggleCart: store.toggleCart,
-    setCartOpen: store.setCartOpen,
+    clearCart,
+    toggleCart,
+    setCartOpen,
     syncWithServer,
   };
 }

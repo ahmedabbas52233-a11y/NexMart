@@ -4,28 +4,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { CartItemWithProduct } from "@/types";
 
-/**
- * Cart Store with Zustand
- * 
- * WHY Zustand over Context API or Redux:
- * 1. No provider wrapping needed - direct import anywhere
- * 2. Minimal boilerplate - no actions, reducers, or dispatch
- * 3. Built-in persistence middleware for localStorage backup
- * 4. Excellent TypeScript inference
- * 5. Smaller bundle size than Redux
- * 
- * ARCHITECTURE:
- * - Server is source of truth (database cart)
- * - Zustand manages optimistic UI updates
- * - localStorage acts as fallback for unauthenticated users
- * - On auth, server cart syncs with localStorage
- */
 interface CartState {
   items: CartItemWithProduct[];
   isLoading: boolean;
   isOpen: boolean;
 
-  // Actions
   setItems: (items: CartItemWithProduct[]) => void;
   addItem: (item: CartItemWithProduct) => void;
   removeItem: (productId: string) => void;
@@ -35,7 +18,6 @@ interface CartState {
   toggleCart: () => void;
   setCartOpen: (open: boolean) => void;
 
-  // Computed
   totalItems: () => number;
   totalPrice: () => number;
 }
@@ -56,7 +38,6 @@ export const useCartStore = create<CartState>()(
           );
 
           if (existingIndex >= 0) {
-            // Update existing item quantity
             const newItems = [...state.items];
             newItems[existingIndex] = {
               ...newItems[existingIndex],
@@ -91,19 +72,19 @@ export const useCartStore = create<CartState>()(
       setCartOpen: (open) => set({ isOpen: open }),
 
       totalItems: () => {
-        return get().items.reduce((sum, item) => sum + item.quantity, 0);
+        return get().items.reduce((sum: number, item: CartItemWithProduct) => sum + item.quantity, 0);
       },
 
       totalPrice: () => {
         return get().items.reduce(
-          (sum, item) => sum + Number(item.product.price) * item.quantity,
+          (sum: number, item: CartItemWithProduct) => sum + Number(item.product?.price || 0) * item.quantity,
           0
         );
       },
     }),
     {
-      name: "cart-storage", // localStorage key
-      partialize: (state) => ({ items: state.items }), // Only persist items
+      name: "cart-storage",
+      partialize: (state) => ({ items: state.items }),
     }
   )
 );

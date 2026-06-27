@@ -81,7 +81,7 @@ export function CartDrawer() {
                   onClick={() => setCartOpen(false)}
                 >
                   <Image
-                    src={item.product.images[0] || "/placeholder-product.jpg"}
+                   src={item.product.images?.[0] || "/placeholder-product.jpg"}
                     alt={item.product.name}
                     fill
                     className="object-cover"
@@ -98,7 +98,7 @@ export function CartDrawer() {
                       {item.product.name}
                     </h3>
                   </Link>
-                  <p className="text-xs text-text-secondary mt-0.5">{item.product.category.name}</p>
+                  <p className="text-xs text-text-secondary mt-0.5">{item.product.category?.name}</p>
 
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center border border-border rounded-md bg-surface">
