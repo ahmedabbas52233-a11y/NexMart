@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/auth/register/route";
 
@@ -35,20 +36,18 @@ vi.mock("bcryptjs", () => ({
   },
 }));
 
-const mockPrisma = {
-  user: {
-    findUnique: vi.fn(),
-    create: vi.fn(),
-  },
-};
-
-vi.mock("@/lib/db", () => ({
-  prisma: mockPrisma,
-}));
+vi.mock("@/lib/db", () => {
+  const mockPrisma = {
+    user: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+  return { prisma: mockPrisma };
+});
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeRegisterRequest(body: Record<string, unknown>): any {
   const { NextRequest } = require("next/server");
   return new NextRequest("http://localhost:3000/api/auth/register", {
@@ -70,6 +69,8 @@ const createdUser = {
   role: "USER",
   createdAt: new Date().toISOString(),
 };
+
+const { prisma: mockPrisma } = await import("@/lib/db");
 
 // ─── Input Validation (Zod) ───────────────────────────────────────────────────
 describe("POST /api/auth/register — validation", () => {
@@ -110,7 +111,7 @@ describe("POST /api/auth/register — validation", () => {
   });
 
   it("returns 400 when required fields are missing", async () => {
-    const req = makeRegisterRequest({ email: "ahmed@example.com" }); // no name or password
+    const req = makeRegisterRequest({ email: "ahmed@example.com" });
     const res = await POST(req);
     const data = await res.json();
 
@@ -161,7 +162,6 @@ describe("POST /api/auth/register — success", () => {
     const res = await POST(req);
     const data = await res.json();
 
-    // The select in the route excludes password
     expect(data.data.password).toBeUndefined();
   });
 

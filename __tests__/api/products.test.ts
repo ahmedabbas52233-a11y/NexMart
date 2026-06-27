@@ -1,14 +1,6 @@
+// @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from "vitest";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const routeModule = require("@/app/api/products/route") as {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  GET: (req: unknown, ctx?: unknown) => Promise<{ status: number; json: () => Promise<any> }>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  POST: (req: unknown) => Promise<{ status: number; json: () => Promise<any> }>;
-};
-const GET = routeModule.GET;
-const POST = routeModule.POST;
+import { GET, POST } from "@/app/api/products/route";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +31,17 @@ vi.mock("next/server", () => ({
   },
 }));
 
+vi.mock("@/lib/db", () => {
+  const mockPrisma = {
+    product: {
+      findMany: vi.fn(),
+      count: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+  return { prisma: mockPrisma };
+});
+
 const mockProducts = [
   {
     id: "prod-1",
@@ -64,23 +67,11 @@ const mockProducts = [
   },
 ];
 
-const mockPrisma = {
-  product: {
-    findMany: vi.fn(),
-    count: vi.fn(),
-    create: vi.fn(),
-  },
-};
-
-vi.mock("@/lib/db", () => ({
-  prisma: mockPrisma,
-}));
+const { prisma: mockPrisma } = await import("@/lib/db");
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeRequest(url: string, init?: Record<string, unknown>): any {
-  // Use a plain object matching the mock shape — avoids require() ESM issues
   return {
     url,
     method: ((init?.method as string) || "GET").toUpperCase(),
@@ -99,7 +90,7 @@ describe("GET /api/products", () => {
 
   it("returns products with success=true and meta", async () => {
     const req = makeRequest("http://localhost:3000/api/products");
-    const res = await GET(req, {});
+    const res = await GET(req, { params: { id: "" } });
     const data = await res.json();
 
     expect(data.success).toBe(true);
@@ -116,7 +107,7 @@ describe("GET /api/products", () => {
     const req = makeRequest(
       "http://localhost:3000/api/products?search=iphone"
     );
-    await GET(req, {});
+    await GET(req, { params: { id: "" } });
 
     const whereArg = mockPrisma.product.findMany.mock.calls[0][0].where;
     expect(whereArg.OR).toEqual([
@@ -130,7 +121,7 @@ describe("GET /api/products", () => {
     const req = makeRequest(
       "http://localhost:3000/api/products?category=laptops"
     );
-    await GET(req, {});
+    await GET(req, { params: { id: "" } });
 
     const whereArg = mockPrisma.product.findMany.mock.calls[0][0].where;
     expect(whereArg.category).toEqual({ slug: "laptops" });
@@ -140,7 +131,7 @@ describe("GET /api/products", () => {
     const req = makeRequest(
       "http://localhost:3000/api/products?minPrice=100&maxPrice=500"
     );
-    await GET(req, {});
+    await GET(req, { params: { id: "" } });
 
     const whereArg = mockPrisma.product.findMany.mock.calls[0][0].where;
     expect(whereArg.price).toMatchObject({ gte: 100, lte: 500 });
@@ -150,7 +141,7 @@ describe("GET /api/products", () => {
     const req = makeRequest(
       "http://localhost:3000/api/products?sortBy=price-asc"
     );
-    await GET(req, {});
+    await GET(req, { params: { id: "" } });
 
     const orderByArg = mockPrisma.product.findMany.mock.calls[0][0].orderBy;
     expect(orderByArg).toEqual({ price: "asc" });
@@ -160,7 +151,7 @@ describe("GET /api/products", () => {
     const req = makeRequest(
       "http://localhost:3000/api/products?sortBy=price-desc"
     );
-    await GET(req, {});
+    await GET(req, { params: { id: "" } });
 
     const orderByArg = mockPrisma.product.findMany.mock.calls[0][0].orderBy;
     expect(orderByArg).toEqual({ price: "desc" });
@@ -170,7 +161,7 @@ describe("GET /api/products", () => {
     const req = makeRequest(
       "http://localhost:3000/api/products?sortBy=rating"
     );
-    await GET(req, {});
+    await GET(req, { params: { id: "" } });
 
     const orderByArg = mockPrisma.product.findMany.mock.calls[0][0].orderBy;
     expect(orderByArg).toEqual({ rating: "desc" });
@@ -183,19 +174,19 @@ describe("GET /api/products", () => {
     mockPrisma.product.count.mockResolvedValue(18);
     mockPrisma.product.findMany.mockResolvedValue([]);
 
-    const res = await GET(req, {});
+    const res = await GET(req, { params: { id: "" } });
     const data = await res.json();
 
     const call = mockPrisma.product.findMany.mock.calls[0][0];
-    expect(call.skip).toBe(6); // (page-1) * limit = (2-1)*6
+    expect(call.skip).toBe(6);
     expect(call.take).toBe(6);
-    expect(data.meta.totalPages).toBe(3); // 18 / 6
+    expect(data.meta.totalPages).toBe(3);
   });
 
   it("returns 500 when Prisma throws", async () => {
     mockPrisma.product.findMany.mockRejectedValue(new Error("DB Error"));
     const req = makeRequest("http://localhost:3000/api/products");
-    const res = await GET(req, {});
+    const res = await GET(req, { params: { id: "" } });
     const data = await res.json();
 
     expect(data.success).toBe(false);
