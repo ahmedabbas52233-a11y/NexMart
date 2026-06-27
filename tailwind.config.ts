@@ -9,6 +9,13 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      backgroundImage: {
+        "primary-gradient": "linear-gradient(180deg, #127FFF 0%, #0067FF 100%)",
+        "hero-gradient": "linear-gradient(135deg, #e8f5f0 0%, #d4edde 100%)",
+        "purple-gradient": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        "pink-gradient": "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+        "blue-cta": "linear-gradient(135deg, #0066FF 0%, #0052CC 100%)",
+      },
       colors: {
         primary: {
           DEFAULT: "#0D6EFD",

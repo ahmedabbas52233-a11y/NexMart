@@ -98,7 +98,7 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <div className="h-9 w-9 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(180deg, #127FFF 0%, #0067FF 100%)" }}>
+              className="bg-primary-gradient">
               <ShoppingCart className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold text-[#1C1C1C] hidden sm:block">
@@ -135,7 +135,7 @@ export function Header() {
               type="submit"
               aria-label="Search"
               className="h-10 px-5 rounded-r-md text-white text-sm font-medium flex items-center gap-2 whitespace-nowrap"
-              style={{ background: "linear-gradient(180deg, #127FFF 0%, #0067FF 100%)" }}
+              className="bg-primary-gradient"
             >
               <Search className="h-4 w-4" />
               <span className="hidden sm:inline">Search</span>
@@ -184,7 +184,7 @@ export function Header() {
                 <ShoppingCart className="h-5 w-5" />
                 {totalItems > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
-                    style={{ background: "linear-gradient(180deg, #127FFF 0%, #0067FF 100%)" }}>
+                    className="bg-primary-gradient">
                     {totalItems > 9 ? "9+" : totalItems}
                   </span>
                 )}
@@ -249,7 +249,7 @@ export function Header() {
               type="submit"
               aria-label="Search"
               className="h-10 px-4 rounded-r-md text-white"
-              style={{ background: "linear-gradient(180deg, #127FFF 0%, #0067FF 100%)" }}
+              className="bg-primary-gradient"
             >
               <Search className="h-4 w-4" />
             </button>

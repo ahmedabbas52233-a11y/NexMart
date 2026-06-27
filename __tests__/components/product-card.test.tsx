@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import React from "react";
 import { ProductCard } from "@/components/product/product-card";
 
@@ -156,7 +155,7 @@ describe("ProductCard — out of stock", () => {
 
   it("disables the Add to Cart button when out of stock", () => {
     render(<ProductCard product={makeProduct({ stock: 0 })} />);
-    // ProductCard renders 2 buttons (wishlist + add-to-cart) — query by name
+    // Button shows "Unavailable" when out of stock (overlay shows "Out of Stock")
     const button = screen.getByRole("button", { name: /out of stock/i });
     expect(button).toBeDisabled();
   });
@@ -179,12 +178,11 @@ describe("ProductCard — add to cart", () => {
     expect(mockAddToCart).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call addToCart when product is out of stock", async () => {
-    const user = userEvent.setup();
+  it("does not call addToCart when product is out of stock", () => {
     render(<ProductCard product={makeProduct({ stock: 0 })} />);
     const button = screen.getByRole("button", { name: /out of stock/i });
-    // userEvent.setup() uses pointer events that respect disabled attribute
-    await user.click(button);
+    // onClick guard prevents addToCart call regardless of how click fires
+    fireEvent.click(button);
     expect(mockAddToCart).not.toHaveBeenCalled();
   });
 });

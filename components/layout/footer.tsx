@@ -20,7 +20,7 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
               <div className="h-9 w-9 rounded-lg flex items-center justify-center"
-                style={{ background: "linear-gradient(180deg, #127FFF 0%, #0067FF 100%)" }}>
+                className="bg-primary-gradient">
                 <ShoppingCart className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold">NexMart</span>

@@ -118,9 +118,11 @@ export function ProductCard({ product }: ProductCardProps) {
         {/* Free shipping badge */}
         <p className="text-[10px] text-[#00B517] font-medium mt-0.5">Free Shipping</p>
 
-        {/* Add to cart button — appears on hover */}
+        {/* Add to cart button */}
         <button
-          onClick={() => addToCart(product.id)}
+          onClick={() => {
+            if (!isOutOfStock && !isLoading) addToCart(product.id);
+          }}
           disabled={isOutOfStock || isLoading}
           aria-label={isOutOfStock ? "Out of Stock" : "Add to Cart"}
           className={cn(
@@ -132,7 +134,7 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
         >
           <ShoppingCart className="h-3.5 w-3.5" />
-          {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+          {isOutOfStock ? "Unavailable" : "Add to Cart"}
         </button>
       </div>
     </div>

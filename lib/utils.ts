@@ -61,6 +61,7 @@ export function truncate(text: string, length: number): string {
  * Next.js App Router cannot serialize non-plain objects across the
  * Server→Client boundary and throws a runtime error that causes 404.
  */
-export function serialize<T>(data: T): T {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function serialize<T>(data: T): any {
   return JSON.parse(JSON.stringify(data));
 }
