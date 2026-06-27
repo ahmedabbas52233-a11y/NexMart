@@ -18,12 +18,6 @@ import {
 } from "lucide-react";
 import { useCartStore } from "@/hooks/useCart";
 
-/**
- * Header — matches Figma design exactly
- * - Light blue (#E5F1FF) header background
- * - Logo + search with category dropdown + user actions
- * - Category navigation bar below
- */
 export function Header() {
   const { data: session } = useSession();
   const totalItems = useCartStore((s) => s.totalItems());
@@ -45,23 +39,29 @@ export function Header() {
   ];
 
   const searchCategories = [
-    "All category", "Electronics", "Mobile Phones",
-    "Laptops", "Cameras", "Audio", "Wearables",
-    "Home & Outdoor", "Furniture",
+    "All category",
+    "Electronics",
+    "Mobile Phones",
+    "Laptops",
+    "Cameras",
+    "Audio",
+    "Wearables",
+    "Home & Outdoor",
+    "Furniture",
   ];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    const cat = selectedCategory !== "All category"
-      ? `&category=${encodeURIComponent(selectedCategory.toLowerCase().replace(/ /g, "-"))}`
-      : "";
+    const cat =
+      selectedCategory !== "All category"
+        ? `&category=${encodeURIComponent(selectedCategory.toLowerCase().replace(/ /g, "-"))}`
+        : "";
     router.push(`/products?search=${encodeURIComponent(searchQuery)}${cat}`);
   };
 
   return (
     <header className="sticky top-0 z-50 w-full shadow-sm">
-
       {/* ── Top announcement bar ─────────────────────────────────────────── */}
       <div className="bg-[#1C1C1C] text-white text-xs py-1.5 px-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -84,8 +84,12 @@ export function Header() {
             </button>
           ) : (
             <>
-              <Link href="/auth/signup" className="hover:underline">Sign up</Link>
-              <Link href="/auth/signin" className="hover:underline">Sign in</Link>
+              <Link href="/auth/signup" className="hover:underline">
+                Sign up
+              </Link>
+              <Link href="/auth/signin" className="hover:underline">
+                Sign in
+              </Link>
             </>
           )}
         </div>
@@ -94,11 +98,9 @@ export function Header() {
       {/* ── Main header ──────────────────────────────────────────────────── */}
       <div className="bg-[#E5F1FF] px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center gap-4">
-
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="h-9 w-9 rounded-lg flex items-center justify-center"
-              className="bg-primary-gradient">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-primary-gradient">
               <ShoppingCart className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold text-[#1C1C1C] hidden sm:block">
@@ -134,8 +136,7 @@ export function Header() {
             <button
               type="submit"
               aria-label="Search"
-              className="h-10 px-5 rounded-r-md text-white text-sm font-medium flex items-center gap-2 whitespace-nowrap"
-              className="bg-primary-gradient"
+              className="h-10 px-5 rounded-r-md text-white text-sm font-medium flex items-center gap-2 whitespace-nowrap bg-primary-gradient"
             >
               <Search className="h-4 w-4" />
               <span className="hidden sm:inline">Search</span>
@@ -159,7 +160,11 @@ export function Header() {
                 href={isAdmin ? "/admin" : "/profile"}
                 className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-white/50 transition-colors text-[#1C1C1C]"
               >
-                {isAdmin ? <LayoutDashboard className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                {isAdmin ? (
+                  <LayoutDashboard className="h-5 w-5" />
+                ) : (
+                  <User className="h-5 w-5" />
+                )}
                 <span className="text-[10px] hidden sm:block max-w-[60px] truncate">
                   {session.user?.name?.split(" ")[0] ?? "Account"}
                 </span>
@@ -183,8 +188,7 @@ export function Header() {
               <div className="relative">
                 <ShoppingCart className="h-5 w-5" />
                 {totalItems > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
-                    className="bg-primary-gradient">
+                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center rounded-full text-[10px] font-bold text-white bg-primary-gradient">
                     {totalItems > 9 ? "9+" : totalItems}
                   </span>
                 )}
@@ -198,7 +202,11 @@ export function Header() {
               className="md:hidden p-2 rounded-lg hover:bg-white/50"
               aria-label="Toggle mobile menu"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
             </button>
           </div>
         </div>
@@ -248,8 +256,7 @@ export function Header() {
             <button
               type="submit"
               aria-label="Search"
-              className="h-10 px-4 rounded-r-md text-white"
-              className="bg-primary-gradient"
+              className="h-10 px-4 rounded-r-md text-white bg-primary-gradient"
             >
               <Search className="h-4 w-4" />
             </button>

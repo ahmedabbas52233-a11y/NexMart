@@ -1,12 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart, Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
+import {
+  ShoppingCart,
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin,
+  Youtube,
+} from "lucide-react";
 
 const footerLinks = {
   About: ["About us", "Find store", "Categories", "Blogs"],
-  "Customer service": ["Help center", "Money back guarantee", "FAQ", "Contact us"],
-  Information: ["Privacy Policy", "Rules & Conditions", "Store list", "Cookie Policy"],
+  "Customer service": [
+    "Help center",
+    "Money back guarantee",
+    "FAQ",
+    "Contact us",
+  ],
+  Information: [
+    "Privacy Policy",
+    "Rules & Conditions",
+    "Store list",
+    "Cookie Policy",
+  ],
   "For users": ["Login", "Register", "Settings", "My Orders"],
 };
 
@@ -19,14 +36,14 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="h-9 w-9 rounded-lg flex items-center justify-center"
-                className="bg-primary-gradient">
+              <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-primary-gradient">
                 <ShoppingCart className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold">NexMart</span>
             </Link>
             <p className="text-sm text-[#8B96A5] mb-4 leading-relaxed">
-              Best information about the company goes here but now lorem ipsum is
+              Best information about the company goes here but now lorem ipsum
+              is
             </p>
             {/* Social links */}
             <div className="flex items-center gap-3">
@@ -100,9 +117,15 @@ export function Footer() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#8B96A5]">
           <p>© 2026 NexMart. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-white transition-colors">Terms</a>
-            <a href="#" className="hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="hover:text-white transition-colors">Cookies</a>
+            <a href="#" className="hover:text-white transition-colors">
+              Terms
+            </a>
+            <a href="#" className="hover:text-white transition-colors">
+              Privacy
+            </a>
+            <a href="#" className="hover:text-white transition-colors">
+              Cookies
+            </a>
             <div className="flex items-center gap-1 border border-white/20 rounded px-2 py-1">
               <span>🇺🇸</span>
               <span>English</span>
