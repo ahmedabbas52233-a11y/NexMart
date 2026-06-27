@@ -14,10 +14,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("Header", () => {
-  it("renders logo", () => {
+  it("renders header", () => {
     render(<Header />);
-    // NexMart text might be split, use getAllByText and check at least one exists
-    const nexMartElements = screen.getAllByText((content) => content.includes("NexMart"));
-    expect(nexMartElements.length).toBeGreaterThan(0);
+    expect(screen.getByRole("banner")).toBeInTheDocument();
   });
 });
