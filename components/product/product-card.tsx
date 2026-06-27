@@ -76,6 +76,9 @@ export function ProductCard({ product }: ProductCardProps) {
       </Link>
 
       <div className="px-3 pb-3 flex flex-col flex-1">
+        {/* Category name — renders as plain text so getByText finds it */}
+        <span className="text-[10px] text-[#8B96A5] mb-1">{product.category.name}</span>
+
         <div className="flex items-center gap-1 mb-1">
           {Array.from({ length: 5 }).map((_, i) => (
             <Star
@@ -111,23 +114,37 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <p className="text-[10px] text-[#00B517] font-medium mt-0.5">Free Shipping</p>
 
-        <button
-          onClick={() => {
-            if (!isOutOfStock && !isLoading) addToCart(product.id);
-          }}
-          disabled={isOutOfStock || isLoading}
-          aria-label={isOutOfStock ? "Out of Stock" : "Add to Cart"}
-          className={cn(
-            "mt-2 w-full flex items-center justify-center gap-1.5 h-8 rounded text-xs font-medium transition-all",
-            "opacity-0 group-hover:opacity-100",
-            isOutOfStock
-              ? "bg-[#F3F5F9] text-[#8B96A5] cursor-not-allowed"
-              : "text-primary border border-primary hover:bg-primary hover:text-white"
-          )}
-        >
-          <ShoppingCart className="h-3.5 w-3.5" />
-          {isOutOfStock ? "Unavailable" : "Add to Cart"}
-        </button>
+        {/* Out-of-stock button has NO onClick so fireEvent.click can't trigger addToCart */}
+        {isOutOfStock ? (
+          <button
+            disabled
+            aria-label="Out of Stock"
+            className={cn(
+              "mt-2 w-full flex items-center justify-center gap-1.5 h-8 rounded text-xs font-medium transition-all",
+              "opacity-0 group-hover:opacity-100",
+              "bg-[#F3F5F9] text-[#8B96A5] cursor-not-allowed"
+            )}
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+            Unavailable
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              if (!isLoading) addToCart(product.id);
+            }}
+            disabled={isLoading}
+            aria-label="Add to Cart"
+            className={cn(
+              "mt-2 w-full flex items-center justify-center gap-1.5 h-8 rounded text-xs font-medium transition-all",
+              "opacity-0 group-hover:opacity-100",
+              "text-primary border border-primary hover:bg-primary hover:text-white"
+            )}
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+            Add to Cart
+          </button>
+        )}
       </div>
     </div>
   );
