@@ -4,22 +4,6 @@ import { prisma } from "@/lib/db";
 import { limiters } from "@/lib/rate-limit";
 import { z } from "zod";
 
-/**
- * POST /api/auth/register
- *
- * WHY separate from NextAuth:
- * - NextAuth doesn't provide a registration endpoint
- * - We need custom validation (Zod schema)
- * - Can send welcome emails, verification tokens
- * - Prevents duplicate emails with proper error handling
- *
- * SECURITY:
- * - Rate-limited: 5 registrations per IP per 15 minutes
- * - Zod validates all inputs before touching the DB
- * - Password hashed with bcrypt (12 rounds ≈ 250ms — resists brute force)
- * - Response never includes the password hash
- */
-
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),

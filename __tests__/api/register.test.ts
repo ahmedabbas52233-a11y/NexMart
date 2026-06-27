@@ -9,11 +9,13 @@ vi.mock("next/server", () => ({
     url: string;
     method: string;
     private _body: string;
+    headers: Map<string, string>;
 
-    constructor(url: string, init?: { method?: string; body?: string }) {
+    constructor(url: string, init?: { method?: string; body?: string; headers?: Record<string, string> }) {
       this.url = url;
       this.method = (init?.method || "POST").toUpperCase();
       this._body = (init?.body as string) || "{}";
+      this.headers = new Map(Object.entries(init?.headers || {}));
     }
 
     async json() {
@@ -21,19 +23,24 @@ vi.mock("next/server", () => ({
     }
   },
   NextResponse: {
-    json: (data: unknown, init?: { status?: number }) => ({
+    json: (data: unknown, init?: { status?: number; headers?: Record<string, string> }) => ({
       status: init?.status ?? 200,
       json: async () => data,
     }),
   },
 }));
 
-// Speed up tests — skip real bcrypt hashing (12 rounds ≈ 250ms each)
-vi.mock("bcryptjs", () => ({
-  default: {
-    hash: vi.fn().mockResolvedValue("hashed_password_mock"),
-    compare: vi.fn().mockResolvedValue(true),
+// Mock rate limiter to always allow
+vi.mock("@/lib/rate-limit", () => ({
+  limiters: {
+    register: () => ({ success: true, limit: 10, remaining: 9, resetAt: Date.now() + 60000 }),
   },
+}));
+
+// Mock bcrypt
+vi.mock("bcryptjs", () => ({
+  hash: vi.fn().mockResolvedValue("hashed_password_mock"),
+  compare: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/db", () => {
@@ -170,7 +177,7 @@ describe("POST /api/auth/register — success", () => {
     const req = makeRegisterRequest(validBody);
     await POST(req);
 
-    expect(bcrypt.default.hash).toHaveBeenCalledWith(validBody.password, 12);
+    expect(bcrypt.hash).toHaveBeenCalledWith(validBody.password, 12);
   });
 
   it("stores the hashed password in Prisma create", async () => {
