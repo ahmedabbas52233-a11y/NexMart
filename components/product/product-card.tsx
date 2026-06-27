@@ -28,8 +28,8 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { addToCart, isLoading } = useCartAPI();
 
-  const discount = product.comparePrice && product.comparePrice > product.price
-    ? Math.round((1 - product.price / product.comparePrice) * 100)
+  const discount = product.comparePrice && Number(product.comparePrice) > Number(product.price)
+    ? Math.round((1 - Number(product.price) / Number(product.comparePrice)) * 100)
     : null;
 
   const rating = product.rating ?? 0;
@@ -106,11 +106,11 @@ export function ProductCard({ product }: ProductCardProps) {
         {/* Price */}
         <div className="flex items-baseline gap-2 mt-auto">
           <span className="text-base font-bold text-[#1C1C1C]">
-            ${product.price.toFixed(2)}
+           ${Number(product.price).toFixed(2)}
           </span>
-          {product.comparePrice && product.comparePrice > product.price && (
+         {product.comparePrice && Number(product.comparePrice) > Number(product.price) && (
             <span className="text-xs text-[#8B96A5] line-through">
-              ${product.comparePrice.toFixed(2)}
+              ${Number(product.comparePrice).toFixed(2)}
             </span>
           )}
         </div>
