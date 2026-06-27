@@ -1,12 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    /**
-     * WHY remotePatterns over domains:
-     * `domains` is deprecated since Next.js 14.0.
-     * remotePatterns is more secure — you can restrict by protocol, hostname,
-     * port, and pathname prefix instead of just the hostname.
-     */
     remotePatterns: [
       {
         protocol: "https",
