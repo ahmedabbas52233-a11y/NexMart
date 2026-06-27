@@ -28,8 +28,10 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { addToCart, isLoading } = useCartAPI();
 
-  const discount = product.comparePrice && Number(product.comparePrice) > Number(product.price)
-    ? Math.round((1 - Number(product.price) / Number(product.comparePrice)) * 100)
+  const price = Number(product.price);
+  const comparePrice = product.comparePrice ? Number(product.comparePrice) : null;
+  const discount = comparePrice && comparePrice > price
+    ? Math.round((1 - price / comparePrice) * 100)
     : null;
 
   const rating = product.rating ?? 0;
@@ -40,14 +42,12 @@ export function ProductCard({ product }: ProductCardProps) {
     <div className={cn(
       "bg-white border border-[#DEE2E7] rounded-md overflow-hidden group hover:shadow-md hover:border-primary transition-all relative flex flex-col"
     )}>
-      {/* Discount badge */}
       {discount && (
         <div className="absolute top-2 left-2 z-10 bg-[#FA3434] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
           -{discount}%
         </div>
       )}
 
-      {/* Wishlist button */}
       <button
         aria-label="Add to wishlist"
         className="absolute top-2 right-2 z-10 h-7 w-7 flex items-center justify-center bg-white border border-[#DEE2E7] rounded opacity-0 group-hover:opacity-100 transition-opacity hover:border-primary hover:text-primary"
@@ -55,7 +55,6 @@ export function ProductCard({ product }: ProductCardProps) {
         <Heart className="h-3.5 w-3.5" />
       </button>
 
-      {/* Out of stock overlay */}
       {isOutOfStock && (
         <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center">
           <span className="bg-[#DEE2E7] text-[#8B96A5] text-xs font-medium px-3 py-1 rounded-full">
@@ -64,11 +63,10 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       )}
 
-      {/* Image */}
       <Link href={`/product/${product.slug}`} className="block p-4 bg-white">
         <div className="aspect-square flex items-center justify-center">
           <Image
-            src={product.images[0] || "/placeholder-product.svg"}
+            src={product.images?.[0] || "/placeholder-product.svg"}
             alt={product.name}
             width={180}
             height={180}
@@ -77,9 +75,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </Link>
 
-      {/* Info */}
       <div className="px-3 pb-3 flex flex-col flex-1">
-        {/* Rating */}
         <div className="flex items-center gap-1 mb-1">
           {Array.from({ length: 5 }).map((_, i) => (
             <Star
@@ -95,7 +91,6 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
         </div>
 
-        {/* Name */}
         <Link
           href={`/product/${product.slug}`}
           className="text-sm text-[#1C1C1C] hover:text-primary line-clamp-2 mb-1 leading-snug flex-1"
@@ -103,22 +98,19 @@ export function ProductCard({ product }: ProductCardProps) {
           {product.name}
         </Link>
 
-        {/* Price */}
         <div className="flex items-baseline gap-2 mt-auto">
           <span className="text-base font-bold text-[#1C1C1C]">
-           ${Number(product.price).toFixed(2)}
+            ${price.toFixed(2)}
           </span>
-         {product.comparePrice && Number(product.comparePrice) > Number(product.price) && (
+          {comparePrice && comparePrice > price && (
             <span className="text-xs text-[#8B96A5] line-through">
-              ${Number(product.comparePrice).toFixed(2)}
+              ${comparePrice.toFixed(2)}
             </span>
           )}
         </div>
 
-        {/* Free shipping badge */}
         <p className="text-[10px] text-[#00B517] font-medium mt-0.5">Free Shipping</p>
 
-        {/* Add to cart button */}
         <button
           onClick={() => {
             if (!isOutOfStock && !isLoading) addToCart(product.id);
