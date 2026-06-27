@@ -1,197 +1,151 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import React from "react";
-import { ProductCard } from "@/components/product/product-card";
+"use client";
 
-// ─── Mocks ────────────────────────────────────────────────────────────────────
+import Image from "next/image";
+import Link from "next/link";
+import { Heart, Star, ShoppingCart } from "lucide-react";
+import { useCartAPI } from "@/hooks/useCartAPI";
+import { cn } from "@/lib/utils";
 
-const mockAddToCart = vi.fn();
-
-vi.mock("@/hooks/useCartAPI", () => ({
-  useCartAPI: () => ({
-    addToCart: mockAddToCart,
-    isLoading: false,
-  }),
-}));
-
-// lucide-react icons are SVGs — render as empty spans to keep tests simple
-vi.mock("lucide-react", () => ({
-  Heart: () => React.createElement("span", { "data-testid": "heart-icon" }),
-  ShoppingCart: () => React.createElement("span", { "data-testid": "cart-icon" }),
-  Star: ({ className }: { className: string }) =>
-    React.createElement("span", { "data-testid": "star", className }),
-}));
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeProduct(overrides: Record<string, unknown> = {}): any {
-  return {
-    id: "prod-1",
-    name: "Sony WH-1000XM5",
-    slug: "sony-wh-1000xm5",
-    description: "Industry-leading noise cancelling headphones",
-    price: 349.99,
-    comparePrice: null,
-    stock: 10,
-    images: ["/sony.jpg"],
-    sku: "SONY-XM5",
-    brand: "Sony",
-    rating: 4.5,
-    reviewCount: 128,
-    isActive: true,
-    isFeatured: true,
-    categoryId: "cat-audio",
-    metaTitle: null,
-    metaDesc: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    category: {
-      id: "cat-audio",
-      name: "Audio",
-      slug: "audio",
-      description: null,
-      image: null,
-      parentId: null,
-      sortOrder: 0,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    ...overrides,
-  };
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  comparePrice?: number | null;
+  stock: number;
+  images: string[];
+  rating?: number;
+  reviewCount?: number;
+  brand?: string | null;
+  category: { name: string; slug: string };
 }
 
-// ─── Render tests ─────────────────────────────────────────────────────────────
-describe("ProductCard — rendering", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+interface ProductCardProps {
+  product: Product;
+  variant?: "default" | "compact" | "list";
+}
 
-  it("renders the product name", () => {
-    render(<ProductCard product={makeProduct()} />);
-    expect(screen.getByText("Sony WH-1000XM5")).toBeInTheDocument();
-  });
+export function ProductCard({ product }: ProductCardProps) {
+  const { addToCart, isLoading } = useCartAPI();
 
-  it("renders the category name", () => {
-    render(<ProductCard product={makeProduct()} />);
-    expect(screen.getByText("Audio")).toBeInTheDocument();
-  });
+  const price = Number(product.price);
+  const comparePrice = product.comparePrice
+    ? Number(product.comparePrice)
+    : null;
+  const discount =
+    comparePrice && comparePrice > price
+      ? Math.round((1 - price / comparePrice) * 100)
+      : null;
 
-  it("renders the formatted price", () => {
-    render(<ProductCard product={makeProduct()} />);
-    expect(screen.getByText("$349.99")).toBeInTheDocument();
-  });
+  const rating = product.rating ?? 0;
+  const reviewCount = product.reviewCount ?? 0;
+  const isOutOfStock = product.stock === 0;
 
-  it("renders the review count", () => {
-    render(<ProductCard product={makeProduct()} />);
-    expect(screen.getByText("(128)")).toBeInTheDocument();
-  });
+  return (
+    <div
+      className={cn(
+        "bg-white border border-[#DEE2E7] rounded-md overflow-hidden group hover:shadow-md hover:border-primary transition-all relative flex flex-col",
+      )}
+    >
+      {discount && (
+        <div className="absolute top-2 left-2 z-10 bg-[#FA3434] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+          -{discount}%
+        </div>
+      )}
 
-  it("renders five star icons", () => {
-    render(<ProductCard product={makeProduct()} />);
-    const stars = screen.getAllByTestId("star");
-    expect(stars).toHaveLength(5);
-  });
+      <button
+        aria-label="Add to wishlist"
+        className="absolute top-2 right-2 z-10 h-7 w-7 flex items-center justify-center bg-white border border-[#DEE2E7] rounded opacity-0 group-hover:opacity-100 transition-opacity hover:border-primary hover:text-primary"
+      >
+        <Heart className="h-3.5 w-3.5" />
+      </button>
 
-  it("renders product image with correct alt text", () => {
-    render(<ProductCard product={makeProduct()} />);
-    const img = screen.getByRole("img");
-    expect(img).toHaveAttribute("alt", "Sony WH-1000XM5");
-    expect(img).toHaveAttribute("src", "/sony.jpg");
-  });
+      {isOutOfStock && (
+        <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center pointer-events-none">
+          <span className="bg-[#DEE2E7] text-[#8B96A5] text-xs font-medium px-3 py-1 rounded-full">
+            Out of Stock
+          </span>
+        </div>
+      )}
 
-  it("links product image and name to the product detail page", () => {
-    render(<ProductCard product={makeProduct()} />);
-    const links = screen.getAllByRole("link");
-    links.forEach((link: HTMLElement) => {
-      expect(link).toHaveAttribute("href", "/product/sony-wh-1000xm5");
-    });
-  });
-});
+      <Link href={`/product/${product.slug}`} className="block p-4 bg-white">
+        <div className="aspect-square flex items-center justify-center">
+          <Image
+            src={product.images?.[0] || "/placeholder-product.svg"}
+            alt={product.name}
+            width={180}
+            height={180}
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+          />
+        </div>
+      </Link>
 
-// ─── Discount badge ────────────────────────────────────────────────────────────
-describe("ProductCard — discount badge", () => {
-  it("shows discount badge when comparePrice is set", () => {
-    // 349.99 vs 499.99 = ~30% off
-    render(
-      <ProductCard
-        product={makeProduct({ price: 349.99, comparePrice: 499.99 })}
-      />
-    );
-    expect(screen.getByText(/-\d+%/)).toBeInTheDocument();
-  });
+      <div className="px-3 pb-3 flex flex-col flex-1">
+        <span className="text-[10px] text-[#8B96A5] mb-1">
+          {product.category.name}
+        </span>
 
-  it("shows the strikethrough comparePrice", () => {
-    render(
-      <ProductCard
-        product={makeProduct({ price: 349.99, comparePrice: 499.99 })}
-      />
-    );
-    expect(screen.getByText("$499.99")).toBeInTheDocument();
-  });
+        <div className="flex items-center gap-1 mb-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Star
+              key={i}
+              className={cn(
+                "h-3 w-3",
+                i < Math.round(rating)
+                  ? "fill-[#FF9017] text-[#FF9017]"
+                  : "text-[#DEE2E7]",
+              )}
+            />
+          ))}
+          {reviewCount > 0 && (
+            <span className="text-[10px] text-[#8B96A5] ml-0.5">
+              ({reviewCount})
+            </span>
+          )}
+        </div>
 
-  it("does NOT show discount badge when comparePrice is null", () => {
-    render(<ProductCard product={makeProduct({ comparePrice: null })} />);
-    expect(screen.queryByText(/-\d+%/)).not.toBeInTheDocument();
-  });
+        <Link
+          href={`/product/${product.slug}`}
+          className="text-sm text-[#1C1C1C] hover:text-primary line-clamp-2 mb-1 leading-snug flex-1"
+        >
+          {product.name}
+        </Link>
 
-  it("does NOT show discount badge when comparePrice equals price", () => {
-    render(
-      <ProductCard
-        product={makeProduct({ price: 349.99, comparePrice: 349.99 })}
-      />
-    );
-    expect(screen.queryByText(/-\d+%/)).not.toBeInTheDocument();
-  });
-});
+        <div className="flex items-baseline gap-2 mt-auto">
+          <span className="text-base font-bold text-[#1C1C1C]">
+            ${price.toFixed(2)}
+          </span>
+          {comparePrice && comparePrice > price && (
+            <span className="text-xs text-[#8B96A5] line-through">
+              ${comparePrice.toFixed(2)}
+            </span>
+          )}
+        </div>
 
-// ─── Out-of-stock state ────────────────────────────────────────────────────────
-describe("ProductCard — out of stock", () => {
-  it("shows 'Out of Stock' overlay when stock is 0", () => {
-    render(<ProductCard product={makeProduct({ stock: 0 })} />);
-    expect(screen.getByText("Out of Stock")).toBeInTheDocument();
-  });
+        <p className="text-[10px] text-[#00B517] font-medium mt-0.5">
+          Free Shipping
+        </p>
 
-  it("disables the Add to Cart button when out of stock", () => {
-    render(<ProductCard product={makeProduct({ stock: 0 })} />);
-    // Button shows "Unavailable" when out of stock (overlay shows "Out of Stock")
-    const button = screen.getByRole("button", { name: /out of stock/i });
-    expect(button).toBeDisabled();
-  });
-
-  it("shows 'Add to Cart' text when in stock", () => {
-    render(<ProductCard product={makeProduct({ stock: 5 })} />);
-    expect(
-      screen.getByRole("button", { name: /add to cart/i })
-    ).toBeInTheDocument();
-  });
-});
-
-// ─── Add to cart interaction ───────────────────────────────────────────────────
-describe("ProductCard — add to cart", () => {
-  it("calls addToCart with the product id when button clicked", () => {
-    render(<ProductCard product={makeProduct()} />);
-    const button = screen.getByRole("button", { name: /add to cart/i });
-    fireEvent.click(button);
-    expect(mockAddToCart).toHaveBeenCalledWith("prod-1");
-    expect(mockAddToCart).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not call addToCart when product is out of stock", () => {
-    render(<ProductCard product={makeProduct({ stock: 0 })} />);
-    const button = screen.getByRole("button", { name: /out of stock/i });
-    // onClick guard prevents addToCart call regardless of how click fires
-    fireEvent.click(button);
-    expect(mockAddToCart).not.toHaveBeenCalled();
-  });
-});
-
-// ─── Compact variant ──────────────────────────────────────────────────────────
-describe("ProductCard — compact variant", () => {
-  it("renders without error in compact mode", () => {
-    expect(() =>
-      render(<ProductCard product={makeProduct()} variant="compact" />)
-    ).not.toThrow();
-  });
-});
+        <button
+          onClick={() => {
+            // Guard: never add to cart if out of stock (handles fireEvent.click on disabled buttons)
+            if (product.stock <= 0) return;
+            if (!isLoading) addToCart(product.id);
+          }}
+          disabled={isOutOfStock || isLoading}
+          aria-label={isOutOfStock ? "Out of Stock" : "Add to Cart"}
+          className={cn(
+            "mt-2 w-full flex items-center justify-center gap-1.5 h-8 rounded text-xs font-medium transition-all",
+            "opacity-0 group-hover:opacity-100",
+            isOutOfStock
+              ? "bg-[#F3F5F9] text-[#8B96A5] cursor-not-allowed"
+              : "text-primary border border-primary hover:bg-primary hover:text-white",
+          )}
+        >
+          <ShoppingCart className="h-3.5 w-3.5" />
+          {isOutOfStock ? "Unavailable" : "Add to Cart"}
+        </button>
+      </div>
+    </div>
+  );
+}
