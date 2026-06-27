@@ -37,10 +37,12 @@ vi.mock("@/lib/rate-limit", () => ({
   },
 }));
 
-// Mock bcrypt
+// Mock bcrypt — MUST match the import style: import bcrypt from "bcryptjs"
 vi.mock("bcryptjs", () => ({
-  hash: vi.fn().mockResolvedValue("hashed_password_mock"),
-  compare: vi.fn().mockResolvedValue(true),
+  default: {
+    hash: vi.fn().mockResolvedValue("hashed_password_mock"),
+    compare: vi.fn().mockResolvedValue(true),
+  },
 }));
 
 vi.mock("@/lib/db", () => {
@@ -177,7 +179,7 @@ describe("POST /api/auth/register — success", () => {
     const req = makeRegisterRequest(validBody);
     await POST(req);
 
-    expect(bcrypt.hash).toHaveBeenCalledWith(validBody.password, 12);
+    expect(bcrypt.default.hash).toHaveBeenCalledWith(validBody.password, 12);
   });
 
   it("stores the hashed password in Prisma create", async () => {
