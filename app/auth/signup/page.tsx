@@ -65,7 +65,7 @@ export default function SignUpPage() {
               <ShoppingCart className="h-5 w-5 text-white" />
             </div>
             <span className="text-2xl font-bold text-text-primary">
-              Shop<span className="text-primary">Ease</span>
+              Nex<span className="text-primary">Mart</span>
             </span>
           </Link>
           <h1 className="text-heading-1 text-text-primary">Create an account</h1>

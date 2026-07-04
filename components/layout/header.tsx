@@ -18,45 +18,32 @@ import {
 } from "lucide-react";
 import { useCartStore } from "@/hooks/useCart";
 
-export function Header() {
+interface NavCategory {
+  name: string;
+  slug: string;
+}
+
+interface HeaderProps {
+  categories?: NavCategory[];
+}
+
+export function Header({ categories = [] }: HeaderProps) {
   const { data: session } = useSession();
   const totalItems = useCartStore((s) => s.totalItems());
   const toggleCart = useCartStore((s) => s.toggleCart);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("All category");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const router = useRouter();
 
   const isAdmin = session?.user?.role === "ADMIN";
 
-  const navCategories = [
-    { label: "Electronics", slug: "electronics" },
-    { label: "Mobile Phones", slug: "mobile-phones" },
-    { label: "Laptops", slug: "laptops" },
-    { label: "Cameras", slug: "cameras" },
-    { label: "Audio", slug: "audio" },
-    { label: "Wearables", slug: "wearables" },
-  ];
-
-  const searchCategories = [
-    "All category",
-    "Electronics",
-    "Mobile Phones",
-    "Laptops",
-    "Cameras",
-    "Audio",
-    "Wearables",
-    "Home & Outdoor",
-    "Furniture",
-  ];
+  const navCategories = categories.slice(0, 6);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    const cat =
-      selectedCategory !== "All category"
-        ? `&category=${encodeURIComponent(selectedCategory.toLowerCase().replace(/ /g, "-"))}`
-        : "";
+    const cat = selectedCategory !== "all" ? `&category=${encodeURIComponent(selectedCategory)}` : "";
     router.push(`/products?search=${encodeURIComponent(searchQuery)}${cat}`);
   };
 
@@ -118,8 +105,9 @@ export function Header() {
                 aria-label="Search category"
                 className="h-10 pl-3 pr-8 border border-[#DEE2E7] border-r-0 rounded-l-md bg-white text-sm text-[#1C1C1C] focus:outline-none focus:border-primary appearance-none cursor-pointer"
               >
-                {searchCategories.map((c) => (
-                  <option key={c}>{c}</option>
+                <option value="all">All category</option>
+                {categories.map((c) => (
+                  <option key={c.slug} value={c.slug}>{c.name}</option>
                 ))}
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#8B96A5] pointer-events-none" />
@@ -229,7 +217,7 @@ export function Header() {
                 href={`/products?category=${cat.slug}`}
                 className="px-4 py-2.5 text-sm text-[#1C1C1C] hover:text-primary whitespace-nowrap transition-colors border-b-2 border-transparent hover:border-primary"
               >
-                {cat.label}
+                {cat.name}
               </Link>
             ))}
             <Link
@@ -269,7 +257,7 @@ export function Header() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="px-3 py-2 text-sm text-[#1C1C1C] hover:text-primary hover:bg-[#E5F1FF] rounded-md transition-colors"
               >
-                {cat.label}
+                {cat.name}
               </Link>
             ))}
           </div>

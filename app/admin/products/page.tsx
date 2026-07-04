@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,24 +7,31 @@ import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { 
-  Plus, 
-  Pencil, 
-  Trash2, 
+import {
+  Plus,
+  Pencil,
+  Trash2,
   Search,
   Eye,
-  Star
+  Star,
 } from "lucide-react";
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 interface Product {
   id: string;
   name: string;
   slug: string;
+  description: string;
   price: string;
   comparePrice: string | null;
   stock: number;
   images: string[];
-  category: { name: string };
+  category: Category;
+  categoryId: string;
   brand: string | null;
   rating: number;
   isFeatured: boolean;
@@ -34,28 +39,34 @@ interface Product {
   createdAt: string;
 }
 
+const emptyForm = {
+  name: "",
+  description: "",
+  price: "",
+  comparePrice: "",
+  stock: "",
+  brand: "",
+  categoryId: "",
+  images: [""],
+  isFeatured: false,
+};
+
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: "",
-    comparePrice: "",
-    stock: "",
-    brand: "",
-    categoryId: "",
-    images: [""],
-    isFeatured: false,
-  });
+  const [formData, setFormData] = useState(emptyForm);
 
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
 
   const fetchProducts = async () => {
@@ -72,11 +83,25 @@ export default function AdminProductsPage() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch("/api/categories");
+      const data = await res.json();
+      if (data.success) {
+        setCategories(data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError("");
+    setIsSubmitting(true);
 
-    const url = editingProduct 
-      ? `/api/products/${editingProduct.id}` 
+    const url = editingProduct
+      ? `/api/products/${editingProduct.id}`
       : "/api/products";
     const method = editingProduct ? "PATCH" : "POST";
 
@@ -88,19 +113,26 @@ export default function AdminProductsPage() {
           ...formData,
           price: parseFloat(formData.price),
           comparePrice: formData.comparePrice ? parseFloat(formData.comparePrice) : null,
-          stock: parseInt(formData.stock),
+          stock: parseInt(formData.stock, 10),
           images: formData.images.filter(Boolean),
         }),
       });
 
-      if (res.ok) {
+      const data = await res.json();
+
+      if (res.ok && data.success) {
         setShowModal(false);
         setEditingProduct(null);
         resetForm();
         fetchProducts();
+      } else {
+        setFormError(data.error || "Failed to save product");
       }
     } catch (error) {
       console.error("Failed to save product:", error);
+      setFormError("Network error. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -117,15 +149,16 @@ export default function AdminProductsPage() {
   };
 
   const openEditModal = (product: Product) => {
+    setFormError("");
     setEditingProduct(product);
     setFormData({
       name: product.name,
-      description: "",
+      description: product.description || "",
       price: product.price,
       comparePrice: product.comparePrice || "",
       stock: product.stock.toString(),
       brand: product.brand || "",
-      categoryId: "",
+      categoryId: product.categoryId,
       images: product.images.length > 0 ? product.images : [""],
       isFeatured: product.isFeatured,
     });
@@ -133,26 +166,17 @@ export default function AdminProductsPage() {
   };
 
   const openCreateModal = () => {
+    setFormError("");
     setEditingProduct(null);
     resetForm();
     setShowModal(true);
   };
 
   const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      comparePrice: "",
-      stock: "",
-      brand: "",
-      categoryId: "",
-      images: [""],
-      isFeatured: false,
-    });
+    setFormData(emptyForm);
   };
 
-  const filteredProducts = products.filter(p =>
+  const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.brand?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -173,9 +197,9 @@ export default function AdminProductsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Total Products", value: products.length },
-          { label: "In Stock", value: products.filter(p => p.stock > 0).length },
-          { label: "Featured", value: products.filter(p => p.isFeatured).length },
-          { label: "Out of Stock", value: products.filter(p => p.stock === 0).length },
+          { label: "In Stock", value: products.filter((p) => p.stock > 0).length },
+          { label: "Featured", value: products.filter((p) => p.isFeatured).length },
+          { label: "Out of Stock", value: products.filter((p) => p.stock === 0).length },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border bg-surface p-4">
             <p className="text-sm text-text-secondary">{stat.label}</p>
@@ -229,7 +253,7 @@ export default function AdminProductsPage() {
                       <div className="flex items-center gap-3">
                         <div className="relative h-10 w-10 rounded-lg overflow-hidden bg-background shrink-0">
                           <Image
-                            src={product.images[0] || "/placeholder-product.jpg"}
+                            src={product.images[0] || "/placeholder-product.svg"}
                             alt={product.name}
                             fill
                             className="object-cover"
@@ -256,7 +280,7 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
-                      <span className={`${product.stock > 5 ? "text-success" : product.stock > 0 ? "text-warning" : "text-danger"}`}>
+                      <span className={product.stock > 5 ? "text-success" : product.stock > 0 ? "text-warning" : "text-danger"}>
                         {product.stock}
                       </span>
                     </td>
@@ -283,17 +307,17 @@ export default function AdminProductsPage() {
                             <Eye className="h-4 w-4 text-text-secondary" />
                           </Button>
                         </Link>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8"
                           onClick={() => openEditModal(product)}
                         >
                           <Pencil className="h-4 w-4 text-text-secondary" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8"
                           onClick={() => setDeleteConfirm(product.id)}
                         >
@@ -318,6 +342,12 @@ export default function AdminProductsPage() {
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {formError && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-danger">
+                    {formError}
+                  </div>
+                )}
+
                 <Input
                   label="Product Name"
                   value={formData.name}
@@ -325,11 +355,43 @@ export default function AdminProductsPage() {
                   required
                 />
 
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-text-primary">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={3}
+                    className="flex w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 resize-none"
+                    placeholder="Product description"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="product-category" className="mb-1.5 block text-sm font-medium text-text-primary">
+                    Category
+                  </label>
+                  <select
+                    id="product-category"
+                    value={formData.categoryId}
+                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                    required
+                    className="flex h-10 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  >
+                    <option value="" disabled>Select a category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Price"
                     type="number"
                     step="0.01"
+                    min="0"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     required
@@ -338,6 +400,7 @@ export default function AdminProductsPage() {
                     label="Compare Price (optional)"
                     type="number"
                     step="0.01"
+                    min="0"
                     value={formData.comparePrice}
                     onChange={(e) => setFormData({ ...formData, comparePrice: e.target.value })}
                   />
@@ -347,6 +410,7 @@ export default function AdminProductsPage() {
                   <Input
                     label="Stock"
                     type="number"
+                    min="0"
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
                     required
@@ -382,7 +446,7 @@ export default function AdminProductsPage() {
                   <Button type="button" variant="secondary" onClick={() => setShowModal(false)} className="flex-1">
                     Cancel
                   </Button>
-                  <Button type="submit" className="flex-1">
+                  <Button type="submit" className="flex-1" isLoading={isSubmitting}>
                     {editingProduct ? "Update" : "Create"} Product
                   </Button>
                 </div>
@@ -406,10 +470,7 @@ export default function AdminProductsPage() {
               <Button variant="secondary" onClick={() => setDeleteConfirm(null)} className="flex-1">
                 Cancel
               </Button>
-              <Button 
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white" 
-                onClick={() => handleDelete(deleteConfirm)}
-              >
+              <Button variant="danger" onClick={() => handleDelete(deleteConfirm)} className="flex-1">
                 Delete
               </Button>
             </div>

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { prisma } from "@/lib/db";
+import { serialize } from "@/lib/utils";
 import { Providers } from "@/components/layout/providers";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -12,20 +14,24 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+// The header needs live category data on every request; forcing dynamic
+// rendering here also guarantees Prisma is never queried at build time.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: {
-    default: "ShopEase - Your Trusted Electronics Store",
-    template: "%s | ShopEase",
+    default: "NexMart - Your Trusted Electronics Store",
+    template: "%s | NexMart",
   },
   description:
     "Discover the latest electronics, gadgets, and tech accessories at unbeatable prices. Free shipping on orders over $50.",
   keywords: ["electronics", "gadgets", "phones", "laptops", "cameras", "online store"],
-  authors: [{ name: "ShopEase" }],
+  authors: [{ name: "NexMart" }],
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://shopease.vercel.app",
-    siteName: "ShopEase",
+    url: "https://nexmart.vercel.app",
+    siteName: "NexMart",
   },
   robots: {
     index: true,
@@ -33,17 +39,33 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+async function getNavCategories() {
+  try {
+    const categories = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+      select: { name: true, slug: true },
+    });
+    return serialize(categories);
+  } catch (error) {
+    console.error("[LAYOUT_CATEGORIES]", error);
+    return [];
+  }
+}
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const categories = await getNavCategories();
+
   return (
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen bg-background font-sans antialiased">
         <Providers>
           <div className="flex min-h-screen flex-col">
-            <Header />
+            <Header categories={categories} />
             <main className="flex-1">{children}</main>
             <Footer />
             <CartDrawer />

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, Star, ShoppingCart } from "lucide-react";
 import { useCartAPI } from "@/hooks/useCartAPI";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 
 interface Product {
   id: string;
@@ -22,7 +22,6 @@ interface Product {
 
 interface ProductCardProps {
   product: Product;
-  variant?: "default" | "compact" | "list";
 }
 
 export function ProductCard({ product }: ProductCardProps) {
@@ -103,11 +102,11 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <div className="flex items-baseline gap-2 mt-auto">
           <span className="text-base font-bold text-[#1C1C1C]">
-            ${price.toFixed(2)}
+            {formatPrice(price)}
           </span>
           {comparePrice && comparePrice > price && (
             <span className="text-xs text-[#8B96A5] line-through">
-              ${comparePrice.toFixed(2)}
+              {formatPrice(comparePrice)}
             </span>
           )}
         </div>
