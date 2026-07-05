@@ -356,10 +356,11 @@ export default function AdminProductsPage() {
                 />
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-text-primary">
+                  <label htmlFor="product-description" className="mb-1.5 block text-sm font-medium text-text-primary">
                     Description
                   </label>
                   <textarea
+                    id="product-description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
