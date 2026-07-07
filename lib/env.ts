@@ -30,10 +30,6 @@ const serverEnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 
-  // Unsplash API (optional — only used by `npm run db:seed` to fetch
-  // accurate, relevant product photos; falls back to curated defaults)
-  UNSPLASH_ACCESS_KEY: z.string().optional(),
-
   // Vercel Blob (optional — enables real file uploads in the admin product
   // form; without it, the form still works via manual image URL entry)
   BLOB_READ_WRITE_TOKEN: z.string().optional(),

@@ -3,45 +3,6 @@ import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
-
-/**
- * Resolves product images for seeding.
- *
- * WHY an API call instead of hardcoded photo IDs: guessing specific Unsplash
- * photo IDs for a product name is fragile — wrong guesses ship broken images
- * with no easy way to notice at build time. Searching Unsplash by keyword at
- * seed time guarantees the photo actually exists and is topically relevant.
- *
- * Falls back to `fallback` (a known-good curated URL) when no API key is
- * configured or the request fails, so `npm run db:seed` always works out of
- * the box — the Unsplash key is an enhancement, not a requirement.
- */
-async function resolveImages(query: string, fallback: string, count = 2): Promise<string[]> {
-  if (!UNSPLASH_ACCESS_KEY) {
-    return [fallback];
-  }
-
-  try {
-    const res = await fetch(
-      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=${count}&orientation=squarish`,
-      { headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` } }
-    );
-
-    if (!res.ok) return [fallback];
-
-    const data = await res.json();
-    const urls = (data.results ?? [])
-      .map((photo: { urls: { regular: string } }) => photo.urls.regular)
-      .slice(0, count);
-
-    return urls.length > 0 ? urls : [fallback];
-  } catch (error) {
-    console.warn(`⚠️  Unsplash lookup failed for "${query}", using fallback image:`, error);
-    return [fallback];
-  }
-}
-
 async function main() {
   const adminPassword = await hash("admin123", 12);
   const userPassword = await hash("user123", 12);
@@ -76,7 +37,7 @@ async function main() {
         name: "Electronics",
         slug: "electronics",
         description: "Latest electronic gadgets and devices",
-        image: "https://images.unsplash.com/photo-1498049860654-af1a5c5668ba?w=800&h=600&fit=crop&q=80&auto=format",
+        image: "https://images.pexels.com/photos/3394665/pexels-photo-3394665.jpeg?w=800&h=600&fit=crop&auto=compress&cs=tinysrgb",
         sortOrder: 1,
       },
     }),
@@ -87,7 +48,7 @@ async function main() {
         name: "Clothing",
         slug: "clothing",
         description: "Fashion and apparel",
-        image: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&h=600&fit=crop&q=80&auto=format",
+        image: "https://images.pexels.com/photos/11671964/pexels-photo-11671964.jpeg?w=800&h=600&fit=crop&auto=compress&cs=tinysrgb",
         sortOrder: 2,
       },
     }),
@@ -98,7 +59,7 @@ async function main() {
         name: "Home & Outdoor",
         slug: "home-outdoor",
         description: "Home and outdoor essentials",
-        image: "https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=800&h=600&fit=crop&q=80&auto=format",
+        image: "https://images.pexels.com/photos/803226/pexels-photo-803226.jpeg?w=800&h=600&fit=crop&auto=compress&cs=tinysrgb",
         sortOrder: 3,
       },
     }),
@@ -109,7 +70,7 @@ async function main() {
         name: "Sports",
         slug: "sports",
         description: "Sports equipment and accessories",
-        image: "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=800&h=600&fit=crop&q=80&auto=format",
+        image: "https://images.pexels.com/photos/8373048/pexels-photo-8373048.jpeg?w=800&h=600&fit=crop&auto=compress&cs=tinysrgb",
         sortOrder: 4,
       },
     }),
@@ -120,7 +81,7 @@ async function main() {
         name: "Beauty & Health",
         slug: "beauty",
         description: "Beauty products and health essentials",
-        image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&h=600&fit=crop&q=80&auto=format",
+        image: "https://images.pexels.com/photos/30968097/pexels-photo-30968097.jpeg?w=800&h=600&fit=crop&auto=compress&cs=tinysrgb",
         sortOrder: 5,
       },
     }),
@@ -136,8 +97,11 @@ async function main() {
       stock: 45,
       sku: "WBH-001",
       brand: "AudioTech",
-      imageFallback: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "wireless headphones",
+      images: [
+        "https://images.pexels.com/photos/3394665/pexels-photo-3394665.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/3394653/pexels-photo-3394653.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.5,
       reviewCount: 128,
       isFeatured: true,
@@ -152,8 +116,11 @@ async function main() {
       stock: 30,
       sku: "SWP-002",
       brand: "TechGear",
-      imageFallback: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "smartwatch",
+      images: [
+        "https://images.pexels.com/photos/5054541/pexels-photo-5054541.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/9130515/pexels-photo-9130515.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/5081419/pexels-photo-5081419.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.3,
       reviewCount: 89,
       isFeatured: true,
@@ -167,8 +134,10 @@ async function main() {
       stock: 60,
       sku: "RSE-003",
       brand: "SportMax",
-      imageFallback: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "running shoes",
+      images: [
+        "https://images.pexels.com/photos/8373048/pexels-photo-8373048.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/8373049/pexels-photo-8373049.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.7,
       reviewCount: 256,
       isFeatured: true,
@@ -183,8 +152,11 @@ async function main() {
       stock: 150,
       sku: "CCT-004",
       brand: "ComfortWear",
-      imageFallback: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "cotton t-shirt",
+      images: [
+        "https://images.pexels.com/photos/11671964/pexels-photo-11671964.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/12025472/pexels-photo-12025472.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/12039633/pexels-photo-12039633.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.2,
       reviewCount: 67,
       categoryId: categories[1].id,
@@ -198,8 +170,11 @@ async function main() {
       stock: 20,
       sku: "OCT-005",
       brand: "WildGear",
-      imageFallback: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "camping tent",
+      images: [
+        "https://images.pexels.com/photos/14287/pexels-photo-14287.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/803226/pexels-photo-803226.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/13894718/pexels-photo-13894718.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.6,
       reviewCount: 45,
       categoryId: categories[2].id,
@@ -212,8 +187,11 @@ async function main() {
       stock: 80,
       sku: "LSA-006",
       brand: "DeskPro",
-      imageFallback: "https://images.unsplash.com/photo-1611186871348-640e75d62e7d?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "laptop stand",
+      images: [
+        "https://images.pexels.com/photos/6045231/pexels-photo-6045231.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/6045230/pexels-photo-6045230.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/6045233/pexels-photo-6045233.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.4,
       reviewCount: 112,
       categoryId: categories[0].id,
@@ -227,8 +205,10 @@ async function main() {
       stock: 35,
       sku: "MGK-007",
       brand: "GamePro",
-      imageFallback: "https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "mechanical keyboard",
+      images: [
+        "https://images.pexels.com/photos/19304049/pexels-photo-19304049.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/671629/pexels-photo-671629.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.8,
       reviewCount: 203,
       isFeatured: true,
@@ -243,8 +223,10 @@ async function main() {
       stock: 100,
       sku: "YMP-008",
       brand: "ZenFit",
-      imageFallback: "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "yoga mat",
+      images: [
+        "https://images.pexels.com/photos/7318664/pexels-photo-7318664.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/4793328/pexels-photo-4793328.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.5,
       reviewCount: 89,
       categoryId: categories[3].id,
@@ -257,8 +239,9 @@ async function main() {
       stock: 40,
       sku: "DJC-009",
       brand: "UrbanStyle",
-      imageFallback: "https://images.unsplash.com/photo-1523205771623-e0faa4d2813d?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "denim jacket",
+      images: [
+        "https://images.pexels.com/photos/5721063/pexels-photo-5721063.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.3,
       reviewCount: 56,
       categoryId: categories[1].id,
@@ -272,8 +255,9 @@ async function main() {
       stock: 75,
       sku: "PBL-010",
       brand: "BlendGo",
-      imageFallback: "https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "portable blender",
+      images: [
+        "https://images.pexels.com/photos/12960436/pexels-photo-12960436.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.1,
       reviewCount: 134,
       categoryId: categories[2].id,
@@ -287,8 +271,10 @@ async function main() {
       stock: 55,
       sku: "SSS-011",
       brand: "GlowLab",
-      imageFallback: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "skincare serum",
+      images: [
+        "https://images.pexels.com/photos/30968097/pexels-photo-30968097.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/34939744/pexels-photo-34939744.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.6,
       reviewCount: 178,
       isFeatured: true,
@@ -302,20 +288,21 @@ async function main() {
       stock: 90,
       sku: "WME-012",
       brand: "ErgoTech",
-      imageFallback: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&h=800&fit=crop&q=80&auto=format",
-      imageQuery: "wireless mouse",
+      images: [
+        "https://images.pexels.com/photos/20213726/pexels-photo-20213726.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb",
+        "https://images.pexels.com/photos/27559516/pexels-photo-27559516.jpeg?w=800&h=800&fit=crop&auto=compress&cs=tinysrgb"
+      ],
       rating: 4.4,
       reviewCount: 92,
       categoryId: categories[0].id,
     },
   ];
 
-  for (const { imageFallback, imageQuery, ...product } of products) {
-    const images = await resolveImages(imageQuery, imageFallback);
+  for (const product of products) {
     await prisma.product.upsert({
       where: { slug: product.slug },
       update: {},
-      create: { ...product, images },
+      create: product,
     });
   }
 

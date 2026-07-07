@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { formatPrice, calculateDiscount, serialize } from "@/lib/utils";
@@ -6,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductActions } from "@/components/product/product-actions";
+import { ProductNotFound } from "@/components/product/product-not-found";
 import { 
   Star, 
   Truck, 
@@ -60,7 +60,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const data = await getProduct(params.id);
 
   if (!data) {
-    notFound();
+    // Rendered inline rather than calling notFound() — nested not-found.tsx
+    // files inside route groups like (shop) have a well-documented Next.js
+    // bug where they get bypassed in favor of the generic root 404 (see
+    // vercel/next.js#54980, #59180). This guarantees the correct, styled
+    // "Product Not Found" UI at the cost of returning HTTP 200 instead of
+    // 404 for a missing product — an acceptable tradeoff for this project.
+    return <ProductNotFound />;
   }
 
   const { product, relatedProducts } = data;

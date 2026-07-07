@@ -183,7 +183,7 @@ ecommerce-fullstack-design/
 │   └── components/               # ProductCard, Header, Footer
 ├── prisma/
 │   ├── schema.prisma             # Database schema (users, products, cart, wishlist, orders)
-│   └── seed.ts                   # Sample data — optionally sources real photos via Unsplash API
+│   └── seed.ts                   # Sample data — real, verified product photos (Pexels)
 ├── types/                        # Shared TypeScript interfaces
 ├── middleware.ts                 # Edge route protection + security headers
 ├── vitest.config.ts              # Test configuration
@@ -227,9 +227,6 @@ NEXTAUTH_SECRET="your-32-char-secret-here"
 # OAuth (optional)
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
-
-# Unsplash API (optional — accurate product photos at seed time)
-UNSPLASH_ACCESS_KEY=""
 
 # Vercel Blob (optional — real image uploads in the admin product form)
 BLOB_READ_WRITE_TOKEN=""
