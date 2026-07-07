@@ -4,13 +4,10 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 
 /**
- * Error Boundary for Products Page
- * 
- * WHY: Catches errors in the page component and its children.
- * Prevents the entire app from crashing.
- * Provides a user-friendly error message with retry option.
+ * Global error boundary — catches errors anywhere in the app tree
+ * that aren't handled by a more specific error.tsx (e.g. products/error.tsx).
  */
-export default function ProductsError({
+export default function GlobalError({
   error: _error,
   reset,
 }: {
@@ -25,13 +22,13 @@ export default function ProductsError({
         </div>
         <h2 className="text-heading-2 text-text-primary mb-2">Something went wrong</h2>
         <p className="text-text-secondary mb-6 max-w-md">
-          We couldn&apos;t load the products. This might be a temporary issue.
+          An unexpected error occurred. Please try again, or head back to the homepage.
         </p>
         <div className="flex gap-3">
           <Button onClick={reset} variant="primary">
             Try Again
           </Button>
-          <Button onClick={() => window.location.href = "/"} variant="secondary">
+          <Button onClick={() => (window.location.href = "/")} variant="secondary">
             Go Home
           </Button>
         </div>
