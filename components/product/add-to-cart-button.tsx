@@ -17,9 +17,11 @@ export function AddToCartButton({ productId, className, disabled }: AddToCartBut
 
   const handleAdd = async () => {
     if (disabled) return;
-    await addToCart(productId, 1);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+    const success = await addToCart(productId, 1);
+    if (success) {
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+    }
   };
 
   return (

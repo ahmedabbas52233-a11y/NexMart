@@ -38,3 +38,20 @@ export function truncate(text: string, length: number): string {
 export function serialize<T>(data: T): any {
   return JSON.parse(JSON.stringify(data));
 }
+
+export const FREE_SHIPPING_THRESHOLD = 500;
+export const STANDARD_SHIPPING_COST = 15;
+export const TAX_RATE = 0.08;
+
+export function calculateOrderTotals(subtotal: number) {
+  const shipping = subtotal > FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : STANDARD_SHIPPING_COST;
+  const tax = Math.round(subtotal * TAX_RATE * 100) / 100;
+  const total = Math.round((subtotal + shipping + tax) * 100) / 100;
+  return { subtotal, shipping, tax, total };
+}
+
+export function generateOrderNumber(): string {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `NM-${timestamp}-${random}`;
+}

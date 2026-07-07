@@ -81,7 +81,7 @@ export function CartDrawer() {
                   onClick={() => setCartOpen(false)}
                 >
                   <Image
-                   src={item.product.images?.[0] || "/placeholder-product.jpg"}
+                   src={item.product.images?.[0] || "/placeholder-product.svg"}
                     alt={item.product.name}
                     fill
                     className="object-cover"

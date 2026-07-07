@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, Star, ShoppingCart } from "lucide-react";
 import { useCartAPI } from "@/hooks/useCartAPI";
+import { useWishlist } from "@/hooks/useWishlist";
 import { cn, formatPrice } from "@/lib/utils";
 
 interface Product {
@@ -26,6 +27,8 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const { addToCart, isLoading } = useCartAPI();
+  const { toggle, isSaved } = useWishlist();
+  const saved = isSaved(product.id);
 
   const price = Number(product.price);
   const comparePrice = product.comparePrice ? Number(product.comparePrice) : null;
@@ -48,10 +51,15 @@ export function ProductCard({ product }: ProductCardProps) {
       )}
 
       <button
-        aria-label="Add to wishlist"
-        className="absolute top-2 right-2 z-10 h-7 w-7 flex items-center justify-center bg-white border border-[#DEE2E7] rounded opacity-0 group-hover:opacity-100 transition-opacity hover:border-primary hover:text-primary"
+        type="button"
+        aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
+        onClick={() => toggle(product.id)}
+        className={cn(
+          "absolute top-2 right-2 z-10 h-7 w-7 flex items-center justify-center bg-white border rounded transition-opacity",
+          saved ? "border-primary text-primary opacity-100" : "border-[#DEE2E7] opacity-0 group-hover:opacity-100 hover:border-primary hover:text-primary"
+        )}
       >
-        <Heart className="h-3.5 w-3.5" />
+        <Heart className={cn("h-3.5 w-3.5", saved && "fill-primary")} />
       </button>
 
       {isOutOfStock && (

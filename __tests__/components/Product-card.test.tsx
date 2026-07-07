@@ -9,6 +9,14 @@ vi.mock("@/hooks/useCartAPI", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useWishlist", () => ({
+  useWishlist: () => ({
+    toggle: vi.fn(),
+    isSaved: () => false,
+    loading: false,
+  }),
+}));
+
 function makeProduct(overrides = {}) {
   return {
     id: "prod-1",

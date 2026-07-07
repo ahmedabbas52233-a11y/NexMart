@@ -96,11 +96,19 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, data: product });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      return NextResponse.json(
-        { success: false, error: "Product not found" },
-        { status: 404 }
-      );
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") {
+        return NextResponse.json(
+          { success: false, error: "Product not found" },
+          { status: 404 }
+        );
+      }
+      if (error.code === "P2003") {
+        return NextResponse.json(
+          { success: false, error: "Selected category does not exist" },
+          { status: 400 }
+        );
+      }
     }
     console.error("[PRODUCT_PATCH]", error);
     return NextResponse.json(

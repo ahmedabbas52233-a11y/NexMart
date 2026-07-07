@@ -61,6 +61,7 @@ export default function AdminProductsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const [formData, setFormData] = useState(emptyForm);
 
@@ -92,6 +93,33 @@ export default function AdminProductsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch categories:", error);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setFormError("");
+
+    try {
+      const body = new FormData();
+      body.append("file", file);
+
+      const res = await fetch("/api/admin/upload", { method: "POST", body });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setFormData((prev) => ({ ...prev, images: [data.data.url] }));
+      } else {
+        setFormError(data.error || "Failed to upload image");
+      }
+    } catch (error) {
+      setFormError("Network error while uploading image");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -423,12 +451,27 @@ export default function AdminProductsPage() {
                   />
                 </div>
 
-                <Input
-                  label="Image URL"
-                  value={formData.images[0]}
-                  onChange={(e) => setFormData({ ...formData, images: [e.target.value] })}
-                  placeholder="https://images.unsplash.com/..."
-                />
+                <div>
+                  <Input
+                    label="Image URL"
+                    value={formData.images[0]}
+                    onChange={(e) => setFormData({ ...formData, images: [e.target.value] })}
+                    placeholder="https://images.unsplash.com/..."
+                  />
+                  <div className="mt-2 flex items-center gap-3">
+                    <label className="text-xs text-text-secondary">or</label>
+                    <label className="text-xs text-primary hover:underline cursor-pointer">
+                      {uploading ? "Uploading..." : "Upload an image"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        disabled={uploading}
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+                  </div>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <input

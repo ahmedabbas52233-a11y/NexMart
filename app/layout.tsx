@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { prisma } from "@/lib/db";
-import { serialize } from "@/lib/utils";
+import { getNavCategories } from "@/lib/categories";
 import { Providers } from "@/components/layout/providers";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -13,10 +12,6 @@ const inter = Inter({
   display: "swap",
   variable: "--font-inter",
 });
-
-// The header needs live category data on every request; forcing dynamic
-// rendering here also guarantees Prisma is never queried at build time.
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: {
@@ -38,20 +33,6 @@ export const metadata: Metadata = {
     follow: true,
   },
 };
-
-async function getNavCategories() {
-  try {
-    const categories = await prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-      select: { name: true, slug: true },
-    });
-    return serialize(categories);
-  } catch (error) {
-    console.error("[LAYOUT_CATEGORIES]", error);
-    return [];
-  }
-}
 
 export default async function RootLayout({
   children,

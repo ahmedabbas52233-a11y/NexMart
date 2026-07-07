@@ -11,20 +11,24 @@ import {
 } from "lucide-react";
 
 const footerLinks = {
-  About: ["About us", "Find store", "Categories", "Blogs"],
+  About: [
+    { label: "About us", href: "/about" },
+    { label: "All Categories", href: "/products" },
+  ],
   "Customer service": [
-    "Help center",
-    "Money back guarantee",
-    "FAQ",
-    "Contact us",
+    { label: "FAQ", href: "/faq" },
+    { label: "Contact us", href: "/contact" },
   ],
   Information: [
-    "Privacy Policy",
-    "Rules & Conditions",
-    "Store list",
-    "Cookie Policy",
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Terms & Conditions", href: "/terms" },
   ],
-  "For users": ["Login", "Register", "Settings", "My Orders"],
+  "For users": [
+    { label: "Login", href: "/auth/signin" },
+    { label: "Register", href: "/auth/signup" },
+    { label: "My Account", href: "/profile" },
+    { label: "My Orders", href: "/profile" },
+  ],
 };
 
 export function Footer() {
@@ -54,14 +58,14 @@ export function Footer() {
                 { icon: Linkedin, label: "LinkedIn" },
                 { icon: Youtube, label: "YouTube" },
               ].map(({ icon: Icon, label }) => (
-                <a
+                <div
                   key={label}
-                  href="#"
-                  aria-label={label}
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-primary transition-colors"
+                  aria-label={`${label} (not linked in this demo)`}
+                  title={`${label} (not linked in this demo)`}
+                  className="h-8 w-8 flex items-center justify-center rounded-full bg-white/10 opacity-60 cursor-not-allowed"
                 >
                   <Icon className="h-4 w-4" />
-                </a>
+                </div>
               ))}
             </div>
           </div>
@@ -72,13 +76,13 @@ export function Footer() {
               <h4 className="font-semibold text-sm mb-3">{title}</h4>
               <ul className="space-y-2">
                 {links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
                       className="text-sm text-[#8B96A5] hover:text-white transition-colors"
                     >
-                      {link}
-                    </a>
+                      {link.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -87,26 +91,26 @@ export function Footer() {
 
           {/* App download */}
           <div className="col-span-2 md:col-span-1">
-            <h4 className="font-semibold text-sm mb-3">For users</h4>
+            <h4 className="font-semibold text-sm mb-3">Get the App</h4>
             <div className="space-y-2">
-              <a
-                href="#"
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg px-3 py-2 transition-colors"
+              <div
+                aria-label="Mobile app not available in this demo"
+                className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 cursor-not-allowed opacity-60"
               >
                 <div className="text-xs">
                   <div className="text-[10px] text-[#8B96A5]">Get it on</div>
                   <div className="font-semibold">Google Play</div>
                 </div>
-              </a>
-              <a
-                href="#"
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg px-3 py-2 transition-colors"
+              </div>
+              <div
+                aria-label="Mobile app not available in this demo"
+                className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 cursor-not-allowed opacity-60"
               >
                 <div className="text-xs">
                   <div className="text-[10px] text-[#8B96A5]">Download on</div>
                   <div className="font-semibold">App Store</div>
                 </div>
-              </a>
+              </div>
             </div>
           </div>
         </div>
@@ -117,15 +121,15 @@ export function Footer() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#8B96A5]">
           <p>© 2026 NexMart. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-white transition-colors">
+            <Link href="/terms" className="hover:text-white transition-colors">
               Terms
-            </a>
-            <a href="#" className="hover:text-white transition-colors">
+            </Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">
               Privacy
-            </a>
-            <a href="#" className="hover:text-white transition-colors">
+            </Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">
               Cookies
-            </a>
+            </Link>
             <div className="flex items-center gap-1 border border-white/20 rounded px-2 py-1">
               <span>🇺🇸</span>
               <span>English</span>

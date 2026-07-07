@@ -28,6 +28,8 @@ model User {
 
   // App relations
   cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orders        Order[]
 
   @@map("users")
 }
@@ -112,6 +114,8 @@ model Product {
 
   // Relations
   cartItems   CartItem[]
+  wishlistItems WishlistItem[]
+  orderItems  OrderItem[]
 
   @@index([categoryId])
   @@index([isFeatured])
@@ -165,4 +169,95 @@ model CartItem {
   @@unique([userId, productId]) // One cart item per product per user
   @@index([userId])
   @@map("cart_items")
+}
+
+// Wishlist — saved-for-later products, separate from the active cart
+model WishlistItem {
+  id        String   @id @default(cuid())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("wishlist_items")
+}
+
+// Order — created at checkout; line items are snapshotted so historical
+// orders remain accurate even if a product's price or name changes later.
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+
+  user            User        @relation(fields: [userId], references: [id])
+  userId          String
+
+  status          OrderStatus @default(PENDING)
+
+  subtotal        Decimal     @db.Decimal(10, 2)
+  shipping        Decimal     @db.Decimal(10, 2) @default(0)
+  tax             Decimal     @db.Decimal(10, 2) @default(0)
+  total           Decimal     @db.Decimal(10, 2)
+
+  shippingName    String
+  shippingEmail   String
+  shippingAddress String
+  shippingCity    String
+  shippingState   String
+  shippingZip     String
+  shippingCountry String
+
+  items           OrderItem[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+// OrderItem — a snapshot of product name/price at time of purchase
+model OrderItem {
+  id          String   @id @default(cuid())
+
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     String
+
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productId   String?
+
+  productName String
+  productImage String?
+  price       Decimal  @db.Decimal(10, 2)
+  quantity    Int
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+// Password reset — short-lived, single-use tokens (hashed at rest)
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@map("password_reset_tokens")
 }

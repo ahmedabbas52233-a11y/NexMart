@@ -5,6 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { limiters } from "@/lib/rate-limit";
 
 const providers: NextAuthOptions["providers"] = [
   CredentialsProvider({
@@ -13,9 +14,23 @@ const providers: NextAuthOptions["providers"] = [
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
     },
-    async authorize(credentials) {
+    async authorize(credentials, req) {
       if (!credentials?.email || !credentials?.password) {
         return null;
+      }
+
+      // Rate limit by IP before touching the database — the login limiter
+      // was previously defined and tested but never actually called,
+      // leaving credential brute-forcing completely unthrottled.
+      const ip =
+        req?.headers?.["x-forwarded-for"]?.split(",")[0].trim() ??
+        req?.headers?.["x-real-ip"] ??
+        "anonymous";
+
+      const limit = limiters.login(ip);
+
+      if (!limit.success) {
+        throw new Error("Too many login attempts. Please try again later.");
       }
 
       const user = await prisma.user.findUnique({
@@ -65,9 +80,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
  * 
  * SECURITY NOTES:
  * - Passwords are hashed with bcrypt (12 rounds) before storage
- * - Sessions are stored server-side in the database
- * - JWT is signed with NEXTAUTH_SECRET
- * - CSRF tokens are automatically managed
+ * - Session strategy is JWT (stateless) — the Prisma adapter is only used to
+ *   persist User/Account records so Google OAuth can link to existing accounts
+ * - The JWT is signed with NEXTAUTH_SECRET
+ * - CSRF tokens are automatically managed by NextAuth
  */
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as Adapter,

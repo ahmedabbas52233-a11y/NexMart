@@ -17,6 +17,7 @@ import {
   Globe,
 } from "lucide-react";
 import { useCartStore } from "@/hooks/useCart";
+import { useWishlist } from "@/hooks/useWishlist";
 
 interface NavCategory {
   name: string;
@@ -29,6 +30,7 @@ interface HeaderProps {
 
 export function Header({ categories = [] }: HeaderProps) {
   const { data: session } = useSession();
+  const { count: wishlistCount } = useWishlist();
   const totalItems = useCartStore((s) => s.totalItems());
   const toggleCart = useCartStore((s) => s.toggleCart);
   const [searchQuery, setSearchQuery] = useState("");
@@ -134,13 +136,19 @@ export function Header({ categories = [] }: HeaderProps) {
           {/* Right actions */}
           <div className="flex items-center gap-2 shrink-0">
             {/* Wishlist */}
-            <button
+            <Link
+              href="/wishlist"
               aria-label="Wishlist"
-              className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-white/50 transition-colors text-[#1C1C1C]"
+              className="relative flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg hover:bg-white/50 transition-colors text-[#1C1C1C]"
             >
               <Heart className="h-5 w-5" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 right-0 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-primary text-white text-[10px] font-bold">
+                  {wishlistCount}
+                </span>
+              )}
               <span className="text-[10px] hidden sm:block">Wishlist</span>
-            </button>
+            </Link>
 
             {/* Account */}
             {session ? (

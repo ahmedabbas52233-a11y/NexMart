@@ -1,15 +1,13 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { formatPrice, calculateDiscount, serialize } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/product/product-card";
+import { ProductGallery } from "@/components/product/product-gallery";
+import { ProductActions } from "@/components/product/product-actions";
 import { 
   Star, 
-  Heart, 
-  Share2, 
   Truck, 
   Shield, 
   RotateCcw,
@@ -92,48 +90,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </nav>
 
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-        <div className="space-y-4">
-          <div className="relative aspect-square rounded-2xl overflow-hidden bg-background border border-border">
-            <Image
-              src={product.images[0] || "/placeholder-product.jpg"}
-              alt={product.name}
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-            {discount && (
-              <Badge variant="destructive" className="absolute top-4 left-4 text-sm px-3 py-1">
-                -{discount}% OFF
-              </Badge>
-            )}
-            {!inStock && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <Badge variant="secondary" className="text-lg px-4 py-2">Out of Stock</Badge>
-              </div>
-            )}
-          </div>
-
-          {product.images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {product.images.map((image: string, index: number) => (
-                <button
-                  key={index}
-                  aria-label={`View image ${index + 1}`}
-                  className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden border-2 border-primary bg-background"
-                >
-                  <Image
-                    src={image}
-                    alt={`${product.name} - ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="80px"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductGallery
+          images={product.images}
+          name={product.name}
+          discount={discount}
+          inStock={inStock}
+        />
 
         <div className="space-y-6">
           <div>
@@ -212,13 +174,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               productId={product.id} 
               disabled={!inStock}
             />
-            <Button variant="secondary" size="lg" className="flex-1">
-              <Heart className="h-5 w-5 mr-2" />
-              Wishlist
-            </Button>
-            <Button variant="ghost" size="icon" className="h-12 w-12">
-              <Share2 className="h-5 w-5" />
-            </Button>
+            <ProductActions productId={product.id} productName={product.name} />
           </div>
 
           <div className="grid grid-cols-3 gap-3 pt-4">

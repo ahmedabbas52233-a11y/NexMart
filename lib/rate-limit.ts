@@ -103,6 +103,10 @@ export const limiters = {
   login: (ip: string) =>
     rateLimit(ip, { windowMs: 15 * 60 * 1000, maxRequests: 10, prefix: "login" }),
 
+  /** 5 password reset requests per IP per 15 minutes */
+  passwordReset: (ip: string) =>
+    rateLimit(ip, { windowMs: 15 * 60 * 1000, maxRequests: 5, prefix: "pwreset" }),
+
   /** 30 API reads per IP per minute */
   api: (ip: string) =>
     rateLimit(ip, { windowMs: 60 * 1000, maxRequests: 30, prefix: "api" }),

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useCartAPI } from "@/hooks/useCartAPI";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, calculateOrderTotals, FREE_SHIPPING_THRESHOLD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { 
   ShoppingCart, 
@@ -36,9 +36,7 @@ export default function CartPage() {
     }
   }, [session, syncWithServer]);
 
-  const shipping = totalPrice > 500 ? 0 : 15;
-  const tax = totalPrice * 0.08;
-  const grandTotal = totalPrice + shipping + tax;
+  const { shipping, tax, total: grandTotal } = calculateOrderTotals(totalPrice);
 
   if (items.length === 0) {
     return (
@@ -79,7 +77,7 @@ export default function CartPage() {
                 className="relative h-24 w-24 sm:h-32 sm:w-32 shrink-0 rounded-lg overflow-hidden bg-background"
               >
                 <Image
-                  src={item.product.images?.[0] || "/placeholder-product.jpg"}
+                  src={item.product.images?.[0] || "/placeholder-product.svg"}
                   alt={item.product.name}
                   fill
                   className="object-cover"
@@ -168,7 +166,7 @@ export default function CartPage() {
               </div>
               {shipping > 0 && (
                 <p className="text-xs text-primary">
-                  Add {formatPrice(500 - totalPrice)} more for free shipping!
+                  Add {formatPrice(FREE_SHIPPING_THRESHOLD - totalPrice)} more for free shipping!
                 </p>
               )}
             </div>
@@ -180,10 +178,12 @@ export default function CartPage() {
               </div>
             </div>
 
-            <Button size="lg" className="w-full" disabled={isLoading}>
-              Proceed to Checkout
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <Link href="/checkout">
+              <Button size="lg" className="w-full" disabled={isLoading}>
+                Proceed to Checkout
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
 
             <div className="grid grid-cols-3 gap-2 pt-2">
               <div className="flex flex-col items-center gap-1 text-center">

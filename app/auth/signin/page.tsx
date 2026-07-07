@@ -104,7 +104,7 @@ function SignInForm() {
               <input type="checkbox" className="rounded border-border text-primary focus:ring-primary" />
               <span className="text-text-secondary">Remember me</span>
             </label>
-            <Link href="#" className="text-primary hover:underline">
+            <Link href="/auth/forgot-password" className="text-primary hover:underline">
               Forgot password?
             </Link>
           </div>

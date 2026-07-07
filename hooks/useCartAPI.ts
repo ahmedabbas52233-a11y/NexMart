@@ -53,7 +53,7 @@ export function useCartAPI() {
     async (productId: string, quantity = 1) => {
       if (!session?.user) {
         toast.error("Please sign in to add items to cart");
-        return;
+        return false;
       }
 
       try {
@@ -70,11 +70,14 @@ export function useCartAPI() {
         if (data.success) {
           addItem(data.data);
           toast.success("Added to cart");
-        } else {
-          toast.error(data.error || "Failed to add to cart");
+          return true;
         }
+
+        toast.error(data.error || "Failed to add to cart");
+        return false;
       } catch (error) {
         toast.error("Network error. Please try again.");
+        return false;
       } finally {
         setLoading(false);
       }
@@ -122,9 +125,11 @@ export function useCartAPI() {
           body: JSON.stringify({ productId, quantity }),
         });
 
-        if (!res.ok) {
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
           setItems(previousItems);
-          toast.error("Failed to update quantity");
+          toast.error(data.error || "Failed to update quantity");
         }
       } catch (error) {
         setItems(previousItems);
