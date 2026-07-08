@@ -21,7 +21,7 @@
 ## Screenshots
 
 | Home | Products | Cart |
-|------|----------|------|-------|
+|------|----------|------|
 | ![Home](/Screenshots/Home-page.png) | ![Products](/Screenshots/Products.png) | ![Cart](/Screenshots/Cart.png) |
 
 ---
