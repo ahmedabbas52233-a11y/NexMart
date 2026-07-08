@@ -4,15 +4,15 @@
 
 ### Production-grade full-stack eCommerce platform
 
-[![CI](https://github.com/ahmedabbas52233-a11y/ecommerce-fullstack-design/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmedabbas52233-a11y/ecommerce-fullstack-design/actions/workflows/ci.yml)
+[![CI](https://github.com/ahmedabbas52233-a11y/NexMart/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmedabbas52233-a11y/NexMart/actions/workflows/ci.yml)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=nextdotjs)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-5.14-2D3748?logo=prisma)](https://www.prisma.io/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/tests-55%2B%20passing-brightgreen?logo=vitest)](./\_\_tests\_\_)
+[![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen?logo=vitest)](./\_\_tests\_\_)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-[**Live Demo**](#deployment) · [**Report Bug**](https://github.com/ahmedabbas52233-a11y/ecommerce-fullstack-design/issues) · [**Request Feature**](https://github.com/ahmedabbas52233-a11y/ecommerce-fullstack-design/issues)
+[**Live Demo**](#deployment) · [**Report Bug**](https://github.com/ahmedabbas52233-a11y/NexMart/issues) · [**Request Feature**](https://github.com/ahmedabbas52233-a11y/NexMart/issues)
 
 > 🚀 **Deploy to Vercel first, then replace this link with your live URL.**
 
@@ -80,11 +80,10 @@
 | **NextAuth** | Authentication | CSRF protection, OAuth support, and session management out of the box |
 | **Zustand** | State management | No provider boilerplate; localStorage persistence middleware built in |
 | **Tailwind CSS** | Styling | Design system tokens, utility-first, zero runtime CSS-in-JS overhead |
-| **Radix UI** | Primitives | Accessible, unstyled — full styling control without re-implementing ARIA |
+| **Radix Slot** | Composition | `@radix-ui/react-slot` powers the Button's `asChild` pattern — the only Radix primitive actually used |
 | **Zod** | Validation | Runtime schema validation on all API inputs; inferred TypeScript types |
 | **bcryptjs** | Password hashing | 12 salt rounds (~250ms) — slow enough to resist brute force |
 | **Vitest** | Testing | Vite-native, fast HMR test runner with native ESM and TypeScript support |
-| **Framer Motion** | Animations | Declarative, performant animations without manual CSS keyframes |
 
 ---
 
@@ -203,7 +202,7 @@ ecommerce-fullstack-design/
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/ahmedabbas52233-a11y/ecommerce-fullstack-design.git
+git clone https://github.com/ahmedabbas52233-a11y/NexMart.git
 cd ecommerce-fullstack-design
 npm install
 ```
@@ -279,20 +278,24 @@ npm run test:run
 npm run test:coverage
 ```
 
-**Coverage targets:** 70% lines / functions / statements, 60% branches.
+**Coverage targets:** 35% lines / statements, 45% functions, 55% branches (enforced in CI via `vitest.config.ts`; actual current coverage exceeds all four).
 
 Test files live in `__tests__/` mirroring the source structure:
 
 ```
 __tests__/
-├── lib/utils.test.ts            # cn, formatPrice, calculateDiscount, slugify, truncate
-├── lib/rate-limit.test.ts       # token bucket logic, window reset, per-IP isolation, all 3 limiters
+├── lib/utils.test.ts            # cn, formatPrice, calculateDiscount, calculateOrderTotals, slugify
+├── lib/rate-limit.test.ts       # token bucket logic, window reset, per-IP isolation, all limiters
+├── lib/auth.test.ts             # credentials authorize(): rate limiting, bad creds, valid login
 ├── hooks/useCart.test.ts        # addItem, removeItem, updateQuantity, totalItems, totalPrice
-├── api/products.test.ts         # GET (filters, search, sort, pagination), POST
-├── api/product-detail.test.ts   # GET (404, slug/id), PATCH, DELETE (soft)
-├── api/register.test.ts         # validation, duplicate email, success, password hashing
-├── api/cart.test.ts             # auth guards, stock checks, upsert, PATCH zero-qty removal
-└── components/product-card.test.tsx  # render, discount badge, out-of-stock, click handler
+├── middleware.test.ts           # admin route redirect, security headers
+├── api/products.test.ts         # public GET, admin-only POST/PATCH/DELETE
+├── api/cart.test.ts             # auth guards, cumulative stock validation, upsert, PATCH/DELETE
+├── api/orders.test.ts           # checkout transaction, stock re-check, ownership access control
+├── api/wishlist.test.ts         # auth guards, idempotent add, remove
+├── components/Product-card.test.tsx  # render, discount badge, out-of-stock, click handler
+├── components/layout/header.test.tsx
+└── components/layout/footer.test.tsx
 ```
 
 ---
