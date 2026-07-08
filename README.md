@@ -12,9 +12,7 @@
 [![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen?logo=vitest)](./\_\_tests\_\_)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-[**Live Demo**](#deployment) · [**Report Bug**](https://github.com/ahmedabbas52233-a11y/NexMart/issues) · [**Request Feature**](https://github.com/ahmedabbas52233-a11y/NexMart/issues)
-
-> 🚀 **Deploy to Vercel first, then replace this link with your live URL.**
+[**Live Demo**](https://nex-mart-chi.vercel.app/) · [**Report Bug**](https://github.com/ahmedabbas52233-a11y/NexMart/issues) · [**Request Feature**](https://github.com/ahmedabbas52233-a11y/NexMart/issues)
 
 </div>
 
@@ -22,11 +20,9 @@
 
 ## Screenshots
 
-> _Deploy to Vercel first, then replace these with your own screenshots._
-
 | Home | Products | Cart | Admin |
 |------|----------|------|-------|
-| ![Home](docs/screenshots/home.png) | ![Products](docs/screenshots/products.png) | ![Cart](docs/screenshots/cart.png) | ![Admin](docs/screenshots/admin.png) |
+| ![Home](/Screenshots/Home-page.png) | ![Products](/Screenshots/Products.png) | ![Cart](/Screenshots/Cart.png) |
 
 ---
 
