@@ -99,8 +99,29 @@ export async function POST(request: NextRequest) {
         throw new Error("EMPTY_CART");
       }
 
+      // Decrement stock with the availability check built into the same
+      // atomic UPDATE, instead of "read stock, compare in app code, then
+      // write" — that pattern has a race: two concurrent checkouts can both
+      // read stock=1, both pass the check, and both decrement, leaving
+      // stock at -1. Postgres serializes concurrent UPDATEs to the same row
+      // (the second waits for the first to commit), so folding the `stock
+      // >= quantity` condition into the UPDATE's WHERE clause makes the
+      // check-and-decrement a single atomic step: at most one of two
+      // racing requests can match the row and succeed. `updateMany`'s
+      // returned `count` tells us whether ours was the one that matched —
+      // 0 means someone else's decrement (or the original read) already
+      // left the row without enough stock, so we treat it as sold out.
       for (const item of cartItems) {
-        if (!item.product.isActive || item.product.stock < item.quantity) {
+        const result = await tx.product.updateMany({
+          where: {
+            id: item.productId,
+            isActive: true,
+            stock: { gte: item.quantity },
+          },
+          data: { stock: { decrement: item.quantity } },
+        });
+
+        if (result.count === 0) {
           throw new Error(`OUT_OF_STOCK:${item.product.name}`);
         }
       }
@@ -132,13 +153,6 @@ export async function POST(request: NextRequest) {
         },
         include: { items: true },
       });
-
-      for (const item of cartItems) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
-        });
-      }
 
       await tx.cartItem.deleteMany({ where: { userId: session.user.id } });
 

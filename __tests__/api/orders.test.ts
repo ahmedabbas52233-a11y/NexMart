@@ -12,7 +12,7 @@ vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 const mockTx = {
   cartItem: { findMany: vi.fn(), deleteMany: vi.fn() },
   order: { create: vi.fn() },
-  product: { update: vi.fn() },
+  product: { updateMany: vi.fn() },
 };
 
 const mockPrisma = {
@@ -83,7 +83,7 @@ describe("/api/orders", () => {
       expect(data.error).toMatch(/empty/i);
     });
 
-    it("rejects checkout when an item no longer has enough stock", async () => {
+    it("rejects checkout when an item no longer has enough stock at read time", async () => {
       mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
       mockTx.cartItem.findMany.mockResolvedValue([
         {
@@ -92,6 +92,9 @@ describe("/api/orders", () => {
           product: { id: "p1", name: "Widget", price: 10, stock: 2, isActive: true, images: [] },
         },
       ]);
+      // The atomic guard is what actually decides this, not the read above —
+      // simulate it correctly refusing to match a row with insufficient stock.
+      mockTx.product.updateMany.mockResolvedValue({ count: 0 });
 
       const res = await createOrder(makeRequest("POST", validAddress));
       const data = await res.json();
@@ -101,7 +104,32 @@ describe("/api/orders", () => {
       expect(mockTx.order.create).not.toHaveBeenCalled();
     });
 
-    it("creates an order, decrements stock, and clears the cart on success", async () => {
+    it("rejects checkout when stock was consumed by a concurrent request between the read and the write (race condition regression test)", async () => {
+      // This is the scenario a race condition produces: the initial read
+      // sees enough stock (stock: 5, requesting 2), but by the time this
+      // transaction's UPDATE runs, a concurrent checkout already consumed
+      // it. The atomic `WHERE stock >= quantity` guard is what has to catch
+      // this — the stale read alone would incorrectly allow it through.
+      mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockTx.cartItem.findMany.mockResolvedValue([
+        {
+          productId: "p1",
+          quantity: 2,
+          product: { id: "p1", name: "Widget", price: 10, stock: 5, isActive: true, images: [] },
+        },
+      ]);
+      mockTx.product.updateMany.mockResolvedValue({ count: 0 });
+
+      const res = await createOrder(makeRequest("POST", validAddress));
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error).toContain("Widget");
+      expect(mockTx.order.create).not.toHaveBeenCalled();
+      expect(mockTx.cartItem.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it("creates an order, atomically decrements stock, and clears the cart on success", async () => {
       mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
       mockTx.cartItem.findMany.mockResolvedValue([
         {
@@ -110,6 +138,7 @@ describe("/api/orders", () => {
           product: { id: "p1", name: "Widget", price: 10, stock: 5, isActive: true, images: ["img.jpg"] },
         },
       ]);
+      mockTx.product.updateMany.mockResolvedValue({ count: 1 });
       mockTx.order.create.mockResolvedValue({ id: "order-1", orderNumber: "NM-TEST", items: [] });
 
       const res = await createOrder(makeRequest("POST", validAddress));
@@ -117,9 +146,12 @@ describe("/api/orders", () => {
 
       expect(res.status).toBe(201);
       expect(data.success).toBe(true);
-      expect(mockTx.product.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: "p1" }, data: { stock: { decrement: 2 } } })
-      );
+      // The stock >= quantity condition must live in the WHERE clause of the
+      // same atomic UPDATE as the decrement — that's what closes the race.
+      expect(mockTx.product.updateMany).toHaveBeenCalledWith({
+        where: { id: "p1", isActive: true, stock: { gte: 2 } },
+        data: { stock: { decrement: 2 } },
+      });
       expect(mockTx.cartItem.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
     });
   });

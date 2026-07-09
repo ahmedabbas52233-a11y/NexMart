@@ -20,6 +20,8 @@
 
 ## Screenshots
 
+> _Deploy to Vercel first, then replace these with your own screenshots._
+
 | Home | Products | Cart |
 |------|----------|------|
 | ![Home](/Screenshots/Home-page.png) | ![Products](/Screenshots/Products.png) | ![Cart](/Screenshots/Cart.png) |
