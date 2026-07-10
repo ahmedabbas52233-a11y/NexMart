@@ -1,39 +1,49 @@
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
 /**
- * In-Memory Rate Limiter
+ * Rate Limiter
  *
- * WHY: Auth endpoints (/register, /login) are the most abused in any web app.
- * Without rate limiting:
- *   - /register → spammers create thousands of accounts
- *   - /login (via NextAuth) → brute-force attacks on passwords
+ * WHY THIS MATTERS ON VERCEL SPECIFICALLY: Vercel serverless functions are
+ * NOT single-instance. Under real traffic, Vercel runs multiple concurrent
+ * instances of the same function, each with its own separate process memory.
+ * A plain in-memory Map does not share state across them — so "10 attempts
+ * per 15 minutes" using only a Map is actually closer to "10 attempts per
+ * warm instance, and there may be several at once," and a cold start wipes
+ * it entirely. That's not a rate limiter you can trust for anything that
+ * actually matters (auth brute-forcing, password reset abuse).
  *
- * WHY in-memory (not Redis/Upstash):
- *   - Zero additional services or cost for a portfolio/demo deployment
- *   - Works correctly on Vercel's single-instance Edge Functions
- *   - For multi-instance production at scale, swap Map → @upstash/ratelimit
+ * WHEN CONFIGURED (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN set):
+ * uses Upstash Redis via @upstash/ratelimit — a real external store shared
+ * across every instance, which is what makes the limit actually hold under
+ * horizontal scaling. Upstash has a free tier sufficient for a portfolio
+ * project: https://upstash.com
  *
- * Algorithm: Token bucket (sliding window approximation)
- * Each IP gets `maxRequests` tokens per `windowMs`. Consumed on each request.
+ * WHEN NOT CONFIGURED: falls back to the in-memory Map so the app still
+ * runs and rate limiting still works *locally* (single dev server process),
+ * but this fallback provides materially weaker protection on serverless —
+ * that tradeoff is deliberate and documented here, not hidden.
  */
 
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const redis = UPSTASH_URL && UPSTASH_TOKEN
+  ? new Redis({ url: UPSTASH_URL, token: UPSTASH_TOKEN })
+  : null;
+
+if (!redis && process.env.NODE_ENV === "production") {
+  console.warn(
+    "⚠️  UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set — rate limiting is " +
+    "using in-memory storage, which does not reliably enforce limits across Vercel's " +
+    "multiple serverless instances. Set both env vars for real protection in production."
+  );
 }
-
-const store = new Map<string, RateLimitEntry>();
-
-// Cleanup stale entries every 5 minutes to prevent memory leak
-setInterval(() => {
-  const now = Date.now();
-  store.forEach((entry, key) => {
-    if (entry.resetAt < now) store.delete(key);
-  });
-}, 5 * 60 * 1000);
 
 export interface RateLimitConfig {
   /** Time window in milliseconds */
   windowMs: number;
-  /** Max requests per IP per window */
+  /** Max requests per identifier per window */
   maxRequests: number;
   /** Key prefix to namespace different limiters */
   prefix?: string;
@@ -41,20 +51,30 @@ export interface RateLimitConfig {
 
 export interface RateLimitResult {
   success: boolean;
-  /** Requests remaining in the current window */
   remaining: number;
-  /** Epoch ms when the window resets */
   resetAt: number;
-  /** Total requests allowed per window */
   limit: number;
 }
 
+// ─── In-memory fallback (token bucket, sliding-window approximation) ───────
+
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
+
+const memoryStore = new Map<string, RateLimitEntry>();
+
+setInterval(() => {
+  const now = Date.now();
+  memoryStore.forEach((entry, key) => {
+    if (entry.resetAt < now) memoryStore.delete(key);
+  });
+}, 5 * 60 * 1000);
+
 /**
- * Check if a request from `identifier` (typically IP address) is within limits.
- *
- * @example
- * const result = rateLimit(ip, { windowMs: 60_000, maxRequests: 5, prefix: 'register' })
- * if (!result.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+ * Synchronous in-memory limiter. Exported directly for unit tests and for
+ * any caller that doesn't need the Upstash-aware wrapper below.
  */
 export function rateLimit(
   identifier: string,
@@ -63,24 +83,14 @@ export function rateLimit(
   const key = `${prefix}:${identifier}`;
   const now = Date.now();
 
-  const entry = store.get(key);
+  const entry = memoryStore.get(key);
 
-  // New window or expired window — reset counter
   if (!entry || entry.resetAt < now) {
-    const newEntry: RateLimitEntry = {
-      count: 1,
-      resetAt: now + windowMs,
-    };
-    store.set(key, newEntry);
-    return {
-      success: true,
-      remaining: maxRequests - 1,
-      resetAt: newEntry.resetAt,
-      limit: maxRequests,
-    };
+    const newEntry: RateLimitEntry = { count: 1, resetAt: now + windowMs };
+    memoryStore.set(key, newEntry);
+    return { success: true, remaining: maxRequests - 1, resetAt: newEntry.resetAt, limit: maxRequests };
   }
 
-  // Existing window — increment counter
   entry.count += 1;
 
   return {
@@ -91,23 +101,65 @@ export function rateLimit(
   };
 }
 
+// ─── Upstash-backed limiter ─────────────────────────────────────────────────
+
+const upstashLimiters = new Map<string, Ratelimit>();
+
+function getUpstashLimiter(config: RateLimitConfig & { prefix: string }): Ratelimit {
+  const key = config.prefix;
+  const existing = upstashLimiters.get(key);
+  if (existing) return existing;
+
+  const limiter = new Ratelimit({
+    redis: redis!,
+    limiter: Ratelimit.slidingWindow(config.maxRequests, `${Math.ceil(config.windowMs / 1000)} s`),
+    prefix: `nexmart:ratelimit:${key}`,
+  });
+  upstashLimiters.set(key, limiter);
+  return limiter;
+}
+
 /**
- * Pre-configured limiters for common use cases.
+ * Async rate limit check — uses Upstash Redis when configured, otherwise
+ * falls back to the in-memory limiter (see module doc comment above for
+ * why that fallback is weaker on serverless).
+ */
+async function checkRateLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
+  const prefix = config.prefix ?? "default";
+
+  if (redis) {
+    const limiter = getUpstashLimiter({ ...config, prefix });
+    const result = await limiter.limit(identifier);
+    return {
+      success: result.success,
+      remaining: result.remaining,
+      resetAt: result.reset,
+      limit: result.limit,
+    };
+  }
+
+  return rateLimit(identifier, config);
+}
+
+/**
+ * Pre-configured limiters for common use cases. All return a Promise —
+ * `await` them even though the in-memory fallback resolves synchronously,
+ * since the Upstash-backed path is a real network call.
  */
 export const limiters = {
   /** 5 registrations per IP per 15 minutes */
   register: (ip: string) =>
-    rateLimit(ip, { windowMs: 15 * 60 * 1000, maxRequests: 5, prefix: "reg" }),
+    checkRateLimit(ip, { windowMs: 15 * 60 * 1000, maxRequests: 5, prefix: "reg" }),
 
   /** 10 login attempts per IP per 15 minutes */
   login: (ip: string) =>
-    rateLimit(ip, { windowMs: 15 * 60 * 1000, maxRequests: 10, prefix: "login" }),
+    checkRateLimit(ip, { windowMs: 15 * 60 * 1000, maxRequests: 10, prefix: "login" }),
 
   /** 5 password reset requests per IP per 15 minutes */
   passwordReset: (ip: string) =>
-    rateLimit(ip, { windowMs: 15 * 60 * 1000, maxRequests: 5, prefix: "pwreset" }),
+    checkRateLimit(ip, { windowMs: 15 * 60 * 1000, maxRequests: 5, prefix: "pwreset" }),
 
   /** 30 API reads per IP per minute */
   api: (ip: string) =>
-    rateLimit(ip, { windowMs: 60 * 1000, maxRequests: 30, prefix: "api" }),
+    checkRateLimit(ip, { windowMs: 60 * 1000, maxRequests: 30, prefix: "api" }),
 } as const;

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       request.headers.get("x-real-ip") ??
       "anonymous";
 
-    const limit = limiters.passwordReset(ip);
+    const limit = await limiters.passwordReset(ip);
 
     if (!limit.success) {
       return NextResponse.json(

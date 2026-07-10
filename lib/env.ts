@@ -39,6 +39,12 @@ const serverEnvSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
 
+  // Upstash Redis (optional but strongly recommended in production — see
+  // lib/rate-limit.ts for why in-memory rate limiting is unreliable on
+  // Vercel's multi-instance serverless functions without this)
+  UPSTASH_REDIS_REST_URL: z.string().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
   // Seed credentials (optional — only needed for `npm run db:seed`)
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_PASSWORD: z.string().min(8).optional(),

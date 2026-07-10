@@ -9,15 +9,17 @@ vi.mock("next-auth", () => ({
 
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 
+// tx is what the $transaction callback receives — POST/PATCH lock the
+// product row with `SELECT ... FOR UPDATE` (mocked via $queryRaw) inside
+// the transaction, so the check-then-write can't race across two requests.
+const mockTx = {
+  $queryRaw: vi.fn(),
+  cartItem: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn() },
+};
+
 const mockPrisma = {
-  product: { findUnique: vi.fn() },
-  cartItem: {
-    findUnique: vi.fn(),
-    upsert: vi.fn(),
-    update: vi.fn(),
-    deleteMany: vi.fn(),
-    findMany: vi.fn(),
-  },
+  cartItem: { findMany: vi.fn(), deleteMany: vi.fn() },
+  $transaction: vi.fn(async (callback: (tx: typeof mockTx) => unknown) => callback(mockTx)),
 };
 
 vi.mock("@/lib/db", () => ({ prisma: mockPrisma }));
@@ -35,6 +37,9 @@ function makeRequest(method: string, body?: unknown, url = "http://localhost/api
 describe("/api/cart", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.$transaction.mockImplementation(async (callback: (tx: typeof mockTx) => unknown) =>
+      callback(mockTx)
+    );
   });
 
   describe("GET", () => {
@@ -66,7 +71,7 @@ describe("/api/cart", () => {
 
     it("rejects when product does not exist", async () => {
       mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
-      mockPrisma.product.findUnique.mockResolvedValue(null);
+      mockTx.$queryRaw.mockResolvedValue([]);
 
       const res = await POST(makeRequest("POST", { productId: "missing", quantity: 1 }));
       const data = await res.json();
@@ -77,8 +82,8 @@ describe("/api/cart", () => {
 
     it("rejects when requested quantity exceeds stock", async () => {
       mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
-      mockPrisma.product.findUnique.mockResolvedValue({ id: "p1", isActive: true, stock: 5 });
-      mockPrisma.cartItem.findUnique.mockResolvedValue(null);
+      mockTx.$queryRaw.mockResolvedValue([{ id: "p1", isActive: true, stock: 5 }]);
+      mockTx.cartItem.findUnique.mockResolvedValue(null);
 
       const res = await POST(makeRequest("POST", { productId: "p1", quantity: 10 }));
       const data = await res.json();
@@ -91,22 +96,42 @@ describe("/api/cart", () => {
       // Regression test: previously only the incremental amount was checked
       // against stock, so repeated small additions could oversell.
       mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
-      mockPrisma.product.findUnique.mockResolvedValue({ id: "p1", isActive: true, stock: 5 });
-      mockPrisma.cartItem.findUnique.mockResolvedValue({ quantity: 4 });
+      mockTx.$queryRaw.mockResolvedValue([{ id: "p1", isActive: true, stock: 5 }]);
+      mockTx.cartItem.findUnique.mockResolvedValue({ quantity: 4 });
 
       const res = await POST(makeRequest("POST", { productId: "p1", quantity: 2 }));
       const data = await res.json();
 
       expect(res.status).toBe(400);
       expect(data.error).toMatch(/stock/i);
-      expect(mockPrisma.cartItem.upsert).not.toHaveBeenCalled();
+      expect(mockTx.cartItem.upsert).not.toHaveBeenCalled();
+    });
+
+    it("locks the product row before checking stock (race condition regression test)", async () => {
+      // Regression test for the concurrency gap: the product availability
+      // check must happen via a row lock (SELECT ... FOR UPDATE) inside the
+      // same transaction as the cart upsert, not a plain read beforehand —
+      // otherwise two concurrent add-to-cart requests can both read stale
+      // data and both pass the check.
+      mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockTx.$queryRaw.mockResolvedValue([{ id: "p1", isActive: true, stock: 5 }]);
+      mockTx.cartItem.findUnique.mockResolvedValue(null);
+      mockTx.cartItem.upsert.mockResolvedValue({ id: "item-1", quantity: 1 });
+
+      await POST(makeRequest("POST", { productId: "p1", quantity: 1 }));
+
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(mockTx.$queryRaw).toHaveBeenCalled();
+      const queryCallOrder = mockTx.$queryRaw.mock.invocationCallOrder[0];
+      const upsertCallOrder = mockTx.cartItem.upsert.mock.invocationCallOrder[0];
+      expect(queryCallOrder).toBeLessThan(upsertCallOrder);
     });
 
     it("adds to cart when within stock", async () => {
       mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
-      mockPrisma.product.findUnique.mockResolvedValue({ id: "p1", isActive: true, stock: 5 });
-      mockPrisma.cartItem.findUnique.mockResolvedValue({ quantity: 1 });
-      mockPrisma.cartItem.upsert.mockResolvedValue({ id: "item-1", quantity: 2 });
+      mockTx.$queryRaw.mockResolvedValue([{ id: "p1", isActive: true, stock: 5 }]);
+      mockTx.cartItem.findUnique.mockResolvedValue({ quantity: 1 });
+      mockTx.cartItem.upsert.mockResolvedValue({ id: "item-1", quantity: 2 });
 
       const res = await POST(makeRequest("POST", { productId: "p1", quantity: 1 }));
       const data = await res.json();
@@ -137,14 +162,26 @@ describe("/api/cart", () => {
 
     it("rejects when the new absolute quantity exceeds stock", async () => {
       mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
-      mockPrisma.product.findUnique.mockResolvedValue({ id: "p1", isActive: true, stock: 3 });
+      mockTx.$queryRaw.mockResolvedValue([{ id: "p1", isActive: true, stock: 3 }]);
 
       const res = await PATCH(makeRequest("PATCH", { productId: "p1", quantity: 10 }));
       const data = await res.json();
 
       expect(res.status).toBe(400);
       expect(data.error).toMatch(/stock/i);
-      expect(mockPrisma.cartItem.update).not.toHaveBeenCalled();
+      expect(mockTx.cartItem.update).not.toHaveBeenCalled();
+    });
+
+    it("updates quantity when within stock", async () => {
+      mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockTx.$queryRaw.mockResolvedValue([{ id: "p1", isActive: true, stock: 5 }]);
+      mockTx.cartItem.update.mockResolvedValue({ id: "item-1", quantity: 3 });
+
+      const res = await PATCH(makeRequest("PATCH", { productId: "p1", quantity: 3 }));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.success).toBe(true);
     });
   });
 

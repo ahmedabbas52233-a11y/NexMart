@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
 import { limiters } from "@/lib/rate-limit";
+import { sendVerificationEmail } from "@/lib/email";
 import { z } from "zod";
 
 const registerSchema = z.object({
@@ -9,6 +11,8 @@ const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
+
+const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +22,7 @@ export async function POST(request: NextRequest) {
       request.headers.get("x-real-ip") ??
       "anonymous";
 
-    const limit = limiters.register(ip);
+    const limit = await limiters.register(ip);
 
     if (!limit.success) {
       return NextResponse.json(
@@ -79,6 +83,23 @@ export async function POST(request: NextRequest) {
         createdAt: true,
       },
     });
+
+    // ── Email verification (best-effort — registration still succeeds if
+    // this fails; verification is informational, not a gate on sign-in) ──
+    try {
+      const token = randomBytes(32).toString("hex");
+      await prisma.verificationToken.create({
+        data: {
+          identifier: email,
+          token,
+          expires: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS),
+        },
+      });
+      const verifyUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/auth/verify-email?token=${token}`;
+      await sendVerificationEmail(email, verifyUrl);
+    } catch (error) {
+      console.error("[REGISTER_SEND_VERIFICATION]", error);
+    }
 
     return NextResponse.json({ success: true, data: user }, { status: 201 });
   } catch (error) {

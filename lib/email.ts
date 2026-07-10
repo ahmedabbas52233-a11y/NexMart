@@ -39,3 +39,35 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
     return { success: false, dev: false };
   }
 }
+
+/**
+ * Sends an email-ownership verification link. Same fallback pattern as
+ * sendPasswordResetEmail — registration succeeds either way, this is a
+ * best-effort side effect, not a blocking dependency of signup.
+ */
+export async function sendVerificationEmail(email: string, verifyUrl: string) {
+  if (!resend) {
+    console.log(`\n📧 [DEV] Email verification link for ${email}:\n${verifyUrl}\n`);
+    return { success: true, dev: true };
+  }
+
+  try {
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: email,
+      subject: "Verify your NexMart email",
+      html: `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2>Verify your email</h2>
+          <p>Welcome to NexMart! Please confirm this is your email address. This link expires in 24 hours.</p>
+          <p><a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background: #0D6EFD; color: white; text-decoration: none; border-radius: 6px;">Verify Email</a></p>
+          <p style="color: #666; font-size: 14px;">If you didn't create this account, you can safely ignore this email.</p>
+        </div>
+      `,
+    });
+    return { success: true, dev: false };
+  } catch (error) {
+    console.error("[SEND_VERIFICATION_EMAIL]", error);
+    return { success: false, dev: false };
+  }
+}

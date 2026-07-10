@@ -27,7 +27,7 @@ const providers: NextAuthOptions["providers"] = [
         req?.headers?.["x-real-ip"] ??
         "anonymous";
 
-      const limit = limiters.login(ip);
+      const limit = await limiters.login(ip);
 
       if (!limit.success) {
         throw new Error("Too many login attempts. Please try again later.");
@@ -53,6 +53,7 @@ const providers: NextAuthOptions["providers"] = [
         name: user.name,
         image: user.image,
         role: user.role,
+        emailVerified: user.emailVerified,
       };
     },
   }),
@@ -101,6 +102,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.emailVerified = user.emailVerified ?? null;
       }
       return token;
     },
@@ -108,6 +110,13 @@ export const authOptions: NextAuthOptions = {
       if (token) {
         session.user.id = token.id as string;
         session.user.role = token.role as "USER" | "ADMIN";
+        // NOTE: since this is a JWT (stateless) session, this reflects
+        // verification status as of last sign-in, not live — a user who
+        // verifies their email without signing out won't see the banner
+        // clear until their next login. Acceptable for a non-blocking,
+        // informational indicator; would need a DB session strategy (or a
+        // dedicated status-check call) to be fully real-time.
+        session.user.emailVerified = (token.emailVerified as Date | null) ?? null;
       }
       return session;
     },

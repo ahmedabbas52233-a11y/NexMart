@@ -7,6 +7,7 @@ import { calculateOrderTotals, generateOrderNumber } from "@/lib/utils";
 import { z } from "zod";
 
 const checkoutSchema = z.object({
+  idempotencyKey: z.string().uuid("Invalid idempotency key").optional(),
   shippingName: z.string().min(2, "Name is required"),
   shippingEmail: z.string().email("A valid email is required"),
   shippingAddress: z.string().min(5, "Address is required"),
@@ -56,6 +57,8 @@ export async function GET(_request: NextRequest) {
  * line item's name/price/image, and clears the cart — all or nothing.
  */
 export async function POST(request: NextRequest) {
+  let idempotencyKey: string | undefined;
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -74,6 +77,25 @@ export async function POST(request: NextRequest) {
         { success: false, error: result.error.errors[0].message },
         { status: 400 }
       );
+    }
+
+    const { idempotencyKey: key, ...shippingDetails } = result.data;
+    idempotencyKey = key;
+
+    // Fast path: a retry of an already-completed checkout (double-click,
+    // client timeout-then-resubmit) — return the original order instead of
+    // creating a second one. This alone doesn't close the race between two
+    // truly simultaneous submissions (see the unique-constraint catch
+    // below for that), but it avoids an unnecessary transaction for the
+    // common sequential-retry case.
+    if (idempotencyKey) {
+      const existingOrder = await prisma.order.findUnique({
+        where: { idempotencyKey },
+        include: { items: true },
+      });
+      if (existingOrder) {
+        return NextResponse.json({ success: true, data: existingOrder }, { status: 200 });
+      }
     }
 
     interface CartItemWithProduct {
@@ -135,12 +157,13 @@ export async function POST(request: NextRequest) {
       const newOrder = await tx.order.create({
         data: {
           orderNumber: generateOrderNumber(),
+          idempotencyKey,
           userId: session.user.id,
           subtotal: totals.subtotal,
           shipping: totals.shipping,
           tax: totals.tax,
           total: totals.total,
-          ...result.data,
+          ...shippingDetails,
           items: {
             create: cartItems.map((item: CartItemWithProduct) => ({
               productId: item.productId,
@@ -173,6 +196,22 @@ export async function POST(request: NextRequest) {
         { success: false, error: `${productName} no longer has enough stock` },
         { status: 400 }
       );
+    }
+    // Two truly simultaneous submissions of the same checkout attempt can
+    // both pass the pre-check above and both reach this transaction — the
+    // database's unique constraint on idempotencyKey is what actually
+    // decides it, rejecting the loser with P2002. Rather than surfacing
+    // that as an error, fetch and return the winner's order: from the
+    // client's perspective, "the order that resulted from my checkout
+    // attempt" is the correct response either way.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002" && idempotencyKey) {
+      const winningOrder = await prisma.order.findUnique({
+        where: { idempotencyKey },
+        include: { items: true },
+      });
+      if (winningOrder) {
+        return NextResponse.json({ success: true, data: winningOrder }, { status: 200 });
+      }
     }
     console.error("[ORDERS_POST]", error);
     return NextResponse.json(

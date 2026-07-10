@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 import { z } from "zod";
@@ -80,53 +81,75 @@ export async function POST(request: NextRequest) {
 
     const { productId, quantity } = result.data;
 
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-    });
+    try {
+      const cartItem = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        // Lock this product's row for the duration of the transaction so
+        // concurrent add-to-cart requests for the same product are
+        // serialized — same class of check-then-write race as the checkout
+        // fix, just without a stock column to decrement here (cart quantity
+        // isn't a reservation; checkout re-validates atomically regardless).
+        // Without this lock, two concurrent requests could both read the
+        // same pre-update cart quantity and both pass the stock check,
+        // leaving the cart showing more than is actually available.
+        const rows = await tx.$queryRaw<{ id: string; stock: number; isActive: boolean }[]>`
+          SELECT id, stock, "isActive" FROM products WHERE id = ${productId} FOR UPDATE
+        `;
+        const product = rows[0];
 
-    if (!product || !product.isActive) {
-      return NextResponse.json(
-        { success: false, error: "Product not found" },
-        { status: 404 }
-      );
+        if (!product || !product.isActive) {
+          throw new Error("PRODUCT_NOT_FOUND");
+        }
+
+        const existing = await tx.cartItem.findUnique({
+          where: { userId_productId: { userId: session.user.id, productId } },
+        });
+
+        const desiredQuantity = (existing?.quantity ?? 0) + quantity;
+
+        if (desiredQuantity > product.stock) {
+          throw new Error(`OUT_OF_STOCK:${product.stock}`);
+        }
+
+        return tx.cartItem.upsert({
+          where: {
+            userId_productId: {
+              userId: session.user.id,
+              productId,
+            },
+          },
+          update: {
+            quantity: { increment: quantity },
+          },
+          create: {
+            userId: session.user.id,
+            productId,
+            quantity,
+          },
+          include: {
+            product: {
+              include: { category: true },
+            },
+          },
+        });
+      });
+
+      return NextResponse.json({ success: true, data: cartItem }, { status: 201 });
+    } catch (error) {
+      if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
+        return NextResponse.json(
+          { success: false, error: "Product not found" },
+          { status: 404 }
+        );
+      }
+      if (error instanceof Error && error.message.startsWith("OUT_OF_STOCK:")) {
+        const availableStock = error.message.split(":")[1];
+        return NextResponse.json(
+          { success: false, error: `Only ${availableStock} left in stock` },
+          { status: 400 }
+        );
+      }
+      throw error;
     }
-
-    const existing = await prisma.cartItem.findUnique({
-      where: { userId_productId: { userId: session.user.id, productId } },
-    });
-
-    const desiredQuantity = (existing?.quantity ?? 0) + quantity;
-
-    if (desiredQuantity > product.stock) {
-      return NextResponse.json(
-        { success: false, error: `Only ${product.stock} left in stock` },
-        { status: 400 }
-      );
-    }
-
-    const cartItem = await prisma.cartItem.upsert({
-      where: {
-        userId_productId: {
-          userId: session.user.id,
-          productId,
-        },
-      },
-      update: {
-        quantity: { increment: quantity },
-      },
-      create: {
-        userId: session.user.id,
-        productId,
-        quantity,
-      },
-      include: {
-        product: {
-          include: { category: true },
-        },
-      },
-    });
-
-    return NextResponse.json({ success: true, data: cartItem }, { status: 201 });
   } catch (error) {
     console.error("[CART_POST]", error);
     return NextResponse.json(
@@ -172,38 +195,55 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ success: true, data: null });
     }
 
-    const product = await prisma.product.findUnique({ where: { id: productId } });
+    try {
+      const cartItem = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        // Same row-lock rationale as POST above.
+        const rows = await tx.$queryRaw<{ id: string; stock: number; isActive: boolean }[]>`
+          SELECT id, stock, "isActive" FROM products WHERE id = ${productId} FOR UPDATE
+        `;
+        const product = rows[0];
 
-    if (!product || !product.isActive) {
-      return NextResponse.json(
-        { success: false, error: "Product not found" },
-        { status: 404 }
-      );
+        if (!product || !product.isActive) {
+          throw new Error("PRODUCT_NOT_FOUND");
+        }
+
+        if (quantity > product.stock) {
+          throw new Error(`OUT_OF_STOCK:${product.stock}`);
+        }
+
+        return tx.cartItem.update({
+          where: {
+            userId_productId: {
+              userId: session.user.id,
+              productId,
+            },
+          },
+          data: { quantity },
+          include: {
+            product: {
+              include: { category: true },
+            },
+          },
+        });
+      });
+
+      return NextResponse.json({ success: true, data: cartItem });
+    } catch (error) {
+      if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
+        return NextResponse.json(
+          { success: false, error: "Product not found" },
+          { status: 404 }
+        );
+      }
+      if (error instanceof Error && error.message.startsWith("OUT_OF_STOCK:")) {
+        const availableStock = error.message.split(":")[1];
+        return NextResponse.json(
+          { success: false, error: `Only ${availableStock} left in stock` },
+          { status: 400 }
+        );
+      }
+      throw error;
     }
-
-    if (quantity > product.stock) {
-      return NextResponse.json(
-        { success: false, error: `Only ${product.stock} left in stock` },
-        { status: 400 }
-      );
-    }
-
-    const cartItem = await prisma.cartItem.update({
-      where: {
-        userId_productId: {
-          userId: session.user.id,
-          productId,
-        },
-      },
-      data: { quantity },
-      include: {
-        product: {
-          include: { category: true },
-        },
-      },
-    });
-
-    return NextResponse.json({ success: true, data: cartItem });
   } catch (error) {
     console.error("[CART_PATCH]", error);
     return NextResponse.json(

@@ -118,27 +118,27 @@ describe("limiters.register()", () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
-  it("allows 5 requests before blocking", () => {
+  it("allows 5 requests before blocking", async () => {
     const ip = "reg-ip-1";
-    const results = Array.from({ length: 6 }, () => limiters.register(ip));
+    const results = await Promise.all(Array.from({ length: 6 }, () => limiters.register(ip)));
 
     expect(results.slice(0, 5).every((r) => r.success)).toBe(true);
     expect(results[5].success).toBe(false);
   });
 
-  it("blocks on the 6th attempt", () => {
+  it("blocks on the 6th attempt", async () => {
     const ip = "reg-ip-2";
-    for (let i = 0; i < 5; i++) limiters.register(ip);
-    expect(limiters.register(ip).success).toBe(false);
+    for (let i = 0; i < 5; i++) await limiters.register(ip);
+    expect((await limiters.register(ip)).success).toBe(false);
   });
 
-  it("resets after 15 minutes", () => {
+  it("resets after 15 minutes", async () => {
     const ip = "reg-ip-3";
-    for (let i = 0; i < 5; i++) limiters.register(ip);
-    expect(limiters.register(ip).success).toBe(false);
+    for (let i = 0; i < 5; i++) await limiters.register(ip);
+    expect((await limiters.register(ip)).success).toBe(false);
 
     tick(15 * 60 * 1000 + 1);
-    expect(limiters.register(ip).success).toBe(true);
+    expect((await limiters.register(ip)).success).toBe(true);
   });
 });
 
@@ -146,9 +146,9 @@ describe("limiters.login()", () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
-  it("allows 10 login attempts before blocking", () => {
+  it("allows 10 login attempts before blocking", async () => {
     const ip = "login-ip-1";
-    const results = Array.from({ length: 11 }, () => limiters.login(ip));
+    const results = await Promise.all(Array.from({ length: 11 }, () => limiters.login(ip)));
 
     expect(results.slice(0, 10).every((r) => r.success)).toBe(true);
     expect(results[10].success).toBe(false);
@@ -159,9 +159,9 @@ describe("limiters.api()", () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
-  it("allows 30 API calls per minute", () => {
+  it("allows 30 API calls per minute", async () => {
     const ip = "api-ip-1";
-    const results = Array.from({ length: 31 }, () => limiters.api(ip));
+    const results = await Promise.all(Array.from({ length: 31 }, () => limiters.api(ip)));
 
     expect(results.slice(0, 30).every((r) => r.success)).toBe(true);
     expect(results[30].success).toBe(false);

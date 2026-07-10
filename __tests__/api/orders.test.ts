@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
+class MockPrismaClientKnownRequestError extends Error {
+  code: string;
+  constructor(message: string, { code }: { code: string }) {
+    super(message);
+    this.code = code;
+    this.name = "PrismaClientKnownRequestError";
+  }
+}
+
+vi.mock("@prisma/client", () => ({
+  Prisma: { PrismaClientKnownRequestError: MockPrismaClientKnownRequestError },
+}));
+
 const mockGetServerSession = vi.fn();
 
 vi.mock("next-auth", () => ({
@@ -153,6 +166,83 @@ describe("/api/orders", () => {
         data: { stock: { decrement: 2 } },
       });
       expect(mockTx.cartItem.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
+    });
+
+    describe("idempotency (double-click / retry protection)", () => {
+      const idempotencyKey = "550e8400-e29b-41d4-a716-446655440000";
+
+      it("returns the existing order instead of creating a new one when the key was already used (sequential retry)", async () => {
+        mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+        mockPrisma.order.findUnique.mockResolvedValue({ id: "order-1", orderNumber: "NM-TEST", items: [] });
+
+        const res = await createOrder(makeRequest("POST", { ...validAddress, idempotencyKey }));
+        const data = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(data.data.id).toBe("order-1");
+        expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      });
+
+      it("rejects an idempotency key that isn't a valid UUID", async () => {
+        mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+        const res = await createOrder(
+          makeRequest("POST", { ...validAddress, idempotencyKey: "not-a-uuid" })
+        );
+        expect(res.status).toBe(400);
+      });
+
+      it("passes the idempotency key through when creating a new order", async () => {
+        mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+        mockPrisma.order.findUnique.mockResolvedValue(null);
+        mockTx.cartItem.findMany.mockResolvedValue([
+          {
+            productId: "p1",
+            quantity: 1,
+            product: { id: "p1", name: "Widget", price: 10, stock: 5, isActive: true, images: [] },
+          },
+        ]);
+        mockTx.product.updateMany.mockResolvedValue({ count: 1 });
+        mockTx.order.create.mockResolvedValue({ id: "order-1", orderNumber: "NM-TEST", items: [] });
+
+        await createOrder(makeRequest("POST", { ...validAddress, idempotencyKey }));
+
+        expect(mockTx.order.create).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ idempotencyKey }) })
+        );
+      });
+
+      it("returns the winning order when two simultaneous submissions race on the same key (true concurrency case)", async () => {
+        // Regression test for the actual race: two requests both pass the
+        // pre-check (neither sees an existing order yet), both start a
+        // transaction, but the database's unique constraint on
+        // idempotencyKey only lets one `order.create` succeed. This test
+        // simulates being the loser of that race.
+        mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+        mockPrisma.order.findUnique
+          .mockResolvedValueOnce(null) // pre-check: no order yet
+          .mockResolvedValueOnce({ id: "order-1", orderNumber: "NM-TEST", items: [] }); // post-P2002 lookup: winner's order
+
+        mockTx.cartItem.findMany.mockResolvedValue([
+          {
+            productId: "p1",
+            quantity: 1,
+            product: { id: "p1", name: "Widget", price: 10, stock: 5, isActive: true, images: [] },
+          },
+        ]);
+        mockTx.product.updateMany.mockResolvedValue({ count: 1 });
+
+        const p2002 = new MockPrismaClientKnownRequestError("Unique constraint failed", {
+          code: "P2002",
+        });
+        mockPrisma.$transaction.mockRejectedValueOnce(p2002);
+
+        const res = await createOrder(makeRequest("POST", { ...validAddress, idempotencyKey }));
+        const data = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(data.success).toBe(true);
+        expect(data.data.id).toBe("order-1");
+      });
     });
   });
 

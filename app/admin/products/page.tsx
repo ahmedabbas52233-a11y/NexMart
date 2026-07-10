@@ -7,6 +7,7 @@ import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/admin/pagination-controls";
 import {
   Plus,
   Pencil,
@@ -64,18 +65,24 @@ export default function AdminProductsPage() {
   const [uploading, setUploading] = useState(false);
 
   const [formData, setFormData] = useState(emptyForm);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 1 });
+  const [stats, setStats] = useState({ total: 0, inStock: 0, featured: 0, outOfStock: 0 });
 
   useEffect(() => {
-    fetchProducts();
+    fetchProducts(page);
     fetchCategories();
-  }, []);
+  }, [page]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (pageNum: number) => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/admin/products");
+      const res = await fetch(`/api/admin/products?page=${pageNum}&limit=50`);
       const data = await res.json();
       if (data.success) {
         setProducts(data.data);
+        if (data.pagination) setPagination(data.pagination);
+        if (data.stats) setStats(data.stats);
       }
     } catch (error) {
       console.error("Failed to fetch products:", error);
@@ -152,7 +159,7 @@ export default function AdminProductsPage() {
         setShowModal(false);
         setEditingProduct(null);
         resetForm();
-        fetchProducts();
+        fetchProducts(page);
       } else {
         setFormError(data.error || "Failed to save product");
       }
@@ -169,7 +176,7 @@ export default function AdminProductsPage() {
       const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
       if (res.ok) {
         setDeleteConfirm(null);
-        fetchProducts();
+        fetchProducts(page);
       }
     } catch (error) {
       console.error("Failed to delete product:", error);
@@ -224,10 +231,10 @@ export default function AdminProductsPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Total Products", value: products.length },
-          { label: "In Stock", value: products.filter((p) => p.stock > 0).length },
-          { label: "Featured", value: products.filter((p) => p.isFeatured).length },
-          { label: "Out of Stock", value: products.filter((p) => p.stock === 0).length },
+          { label: "Total Products", value: stats.total },
+          { label: "In Stock", value: stats.inStock },
+          { label: "Featured", value: stats.featured },
+          { label: "Out of Stock", value: stats.outOfStock },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border bg-surface p-4">
             <p className="text-sm text-text-secondary">{stat.label}</p>
@@ -359,6 +366,13 @@ export default function AdminProductsPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={setPage}
+        />
       </div>
 
       {showModal && (

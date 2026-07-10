@@ -6,7 +6,8 @@ import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { User, Package, Heart, LogOut } from "lucide-react";
+import { User, Package, Heart, LogOut, Mail, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 
 interface Order {
   id: string;
@@ -28,6 +29,7 @@ const statusColors: Record<string, "default" | "secondary" | "destructive"> = {
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [resending, setResending] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +48,23 @@ export default function ProfilePage() {
       .catch((error) => console.error("Failed to fetch orders:", error))
       .finally(() => setLoading(false));
   }, [session, status]);
+
+  const handleResendVerification = async () => {
+    setResending(true);
+    try {
+      const res = await fetch("/api/auth/resend-verification", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || "Verification email sent");
+      } else {
+        toast.error(data.error || "Failed to send verification email");
+      }
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  };
 
   if (status !== "loading" && !session?.user) {
     return (
@@ -75,6 +94,24 @@ export default function ProfilePage() {
           Sign Out
         </Button>
       </div>
+
+      {session?.user && !session.user.emailVerified && (
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 mb-6 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
+          <p className="text-sm text-text-secondary flex-1">
+            Your email address isn&apos;t verified yet.
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleResendVerification}
+            disabled={resending}
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            {resending ? "Sending..." : "Resend email"}
+          </Button>
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
         <Link href="/wishlist" className="rounded-xl border border-border bg-surface p-5 flex items-center gap-3 hover:border-primary transition-colors">

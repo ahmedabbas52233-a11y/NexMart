@@ -194,6 +194,12 @@ model Order {
   id              String      @id @default(cuid())
   orderNumber     String      @unique
 
+  // Client-generated key (one per checkout attempt, reused across retries
+  // of that same attempt) — lets the API return the existing order instead
+  // of creating a duplicate if a double-click or network retry resubmits
+  // the same checkout before the first request has finished.
+  idempotencyKey  String?     @unique
+
   user            User        @relation(fields: [userId], references: [id])
   userId          String
 

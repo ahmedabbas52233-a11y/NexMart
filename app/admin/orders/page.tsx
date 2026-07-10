@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatPrice } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { PaginationControls } from "@/components/admin/pagination-controls";
 
 interface Order {
   id: string;
@@ -29,16 +30,24 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 1 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, delivered: 0, revenue: 0 });
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    fetchOrders(page);
+  }, [page]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (pageNum: number) => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/admin/orders");
+      const res = await fetch(`/api/admin/orders?page=${pageNum}&limit=50`);
       const data = await res.json();
-      if (data.success) setOrders(data.data);
+      if (data.success) {
+        setOrders(data.data);
+        if (data.pagination) setPagination(data.pagination);
+        if (data.stats) setStats(data.stats);
+      }
     } catch (error) {
       console.error("Failed to fetch orders:", error);
     } finally {
@@ -65,10 +74,6 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const totalRevenue = orders
-    .filter((o) => o.status !== "CANCELLED")
-    .reduce((sum, o) => sum + Number(o.total), 0);
-
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -78,10 +83,10 @@ export default function AdminOrdersPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Total Orders", value: orders.length },
-          { label: "Revenue", value: formatPrice(totalRevenue) },
-          { label: "Pending", value: orders.filter((o) => o.status === "PENDING").length },
-          { label: "Delivered", value: orders.filter((o) => o.status === "DELIVERED").length },
+          { label: "Total Orders", value: stats.total },
+          { label: "Revenue", value: formatPrice(stats.revenue) },
+          { label: "Pending", value: stats.pending },
+          { label: "Delivered", value: stats.delivered },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border bg-surface p-4">
             <p className="text-sm text-text-secondary">{stat.label}</p>
@@ -147,6 +152,13 @@ export default function AdminOrdersPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

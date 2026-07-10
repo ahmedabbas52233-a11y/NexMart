@@ -5,6 +5,7 @@ import Image from "next/image";
 import { formatPrice } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/admin/pagination-controls";
 import { Search, User as UserIcon } from "lucide-react";
 
 interface Customer {
@@ -22,17 +23,27 @@ export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 1 });
 
   useEffect(() => {
-    fetch("/api/admin/customers")
+    setLoading(true);
+    fetch(`/api/admin/customers?page=${page}&limit=50`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) setCustomers(data.data);
+        if (data.success) {
+          setCustomers(data.data);
+          if (data.pagination) setPagination(data.pagination);
+        }
       })
       .catch((error) => console.error("Failed to fetch customers:", error))
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
+  // Search filters only the currently loaded page — server-side search
+  // (a `search` query param on /api/admin/customers, same pattern as
+  // /api/products) would be the natural next step if the customer list
+  // grows past a page or two.
   const filtered = customers.filter(
     (c) =>
       c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -110,6 +121,13 @@ export default function AdminCustomersPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );
